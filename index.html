@@ -439,7 +439,18 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_bSozVxnQyrkA4kAmlU6WZA_SJC1pY-b';
 
     // Crear cliente de Supabase (SOLO UNA VEZ) - Usando la variable global
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // borrar despues const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabaseClient = null;
+        try {
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client inicializado correctamente');
+    } else {
+        console.error('❌ Supabase no está disponible. Verifica que el script se haya cargado.');
+    }
+} catch (error) {
+    console.error('❌ Error al inicializar Supabase:', error);
+}
 
     // ============================================
     // ESTADO GLOBAL
