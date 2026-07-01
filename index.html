@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ROOMYRENT · Gestión de Inmuebles</title>
+    
+    <!-- ✅ TAILWIND CSS - CDN ALTERNATIVO (SIEMPRE FUNCIONA) -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
@@ -1695,7 +1698,6 @@
         // FUNCIONES DE HABITACIONES
         // ============================================
         function openEditRoomModal(propertyId, roomId) {
-            // Implementar edición de habitación
             showToast('🛠️ Editar habitación - Implementar', 'info');
         }
 
@@ -1712,7 +1714,6 @@
                 return;
             }
             
-            // Actualizar estado local
             await loadInitialData();
             renderProperties();
             openManageModal(propertyId);
@@ -2081,7 +2082,6 @@
             
             const updates = { name, phone, email };
             
-            // Si hay imagen, subirla
             const fileInput = document.getElementById('profileImageInput');
             if (fileInput.files && fileInput.files[0]) {
                 const reader = new FileReader();
