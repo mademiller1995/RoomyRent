@@ -1,4 +1,437 @@
-<script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ROOMYRENT · Gestión de Inmuebles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f0f2f5; font-family: system-ui, sans-serif; min-height: 100vh; padding-bottom: 20px; overflow-x: hidden; }
+        .card-shadow { box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        .card-shadow-hover:hover { box-shadow: 0 12px 36px rgba(0,0,0,0.1); transform: translateY(-4px); transition: all 0.3s ease; }
+        .bottom-nav-item { transition: all 0.2s ease; cursor: pointer; user-select: none; position: relative; }
+        .bottom-nav-item:hover { transform: translateY(-2px); }
+        .tab-active { color: #4f46e5; }
+        .tab-active i { text-shadow: 0 2px 10px rgba(79,70,229,0.25); }
+        .tab-inactive { color: #94a3b8; }
+        .tab-inactive:hover { color: #64748b; }
+        .login-card { background: white; border-radius: 28px; padding: 40px 32px; max-width: 420px; margin: 20px auto; box-shadow: 0 24px 64px rgba(0,0,0,0.08); }
+        .login-input { width: 100%; padding: 14px 18px; border: 2px solid #e2e8f0; border-radius: 14px; outline: none; transition: all 0.2s; font-size: 14px; background: #f8fafc; }
+        .login-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.08); background: white; }
+        .login-btn { width: 100%; padding: 14px; border-radius: 14px; background: #4f46e5; color: white; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; font-size: 15px; }
+        .login-btn:hover { background: #4338ca; transform: scale(1.01); }
+        .role-tab { transition: all 0.3s ease; cursor: pointer; padding: 14px 20px; border-radius: 16px; font-weight: 500; font-size: 14px; border: 2px solid transparent; }
+        .role-tab.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .role-tab.inactive { background: #f1f5f9; color: #64748b; border-color: transparent; }
+        .role-tab.inactive:hover { background: #e2e8f0; }
+        .modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay .modal-content { max-height: 90vh; overflow-y: auto; border-radius: 24px; scrollbar-width: none; width: 100%; max-width: 420px; }
+        .modal-overlay .modal-content::-webkit-scrollbar { display: none; }
+        .property-img { height: 200px; object-fit: cover; width: 100%; }
+        .toast { transition: all 0.4s ease; z-index: 100; }
+        .toast.hidden { opacity: 0; transform: translateY(-30px) scale(0.95); pointer-events: none; }
+        .fade-enter { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .status-ocupada { background: #fee2e2; color: #991b1b; }
+        .status-libre { background: #dcfce7; color: #166534; }
+        .status-reservada { background: #fef3c7; color: #92400e; }
+        .status-parcial { background: #fef3c7; color: #92400e; }
+        .property-card { transition: all 0.2s ease; }
+        .property-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
+        .header-fixed { position: sticky; top: 0; z-index: 40; background: white; border-bottom: 1px solid #f1f5f9; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+        .profile-icon { width: 36px; height: 36px; border-radius: 50%; background: #4f46e5; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; object-fit: cover; overflow: hidden; }
+        .profile-icon:hover { transform: scale(1.05); border-color: #818cf8; }
+        .profile-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .btn-gestionar { background: #4f46e5; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-gestionar:hover { background: #4338ca; transform: scale(1.05); }
+        .search-box { background: white; border-radius: 16px; padding: 10px 16px; border: 2px solid #e2e8f0; transition: all 0.3s; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); flex: 1; }
+        .search-box:focus-within { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.08), 0 4px 12px rgba(0,0,0,0.06); transform: translateY(-1px); }
+        .search-box input { border: none; outline: none; flex: 1; font-size: 14px; background: transparent; color: #1e293b; }
+        .search-box input::placeholder { color: #94a3b8; }
+        .search-box .search-icon { color: #94a3b8; font-size: 16px; transition: all 0.3s; }
+        .search-box:focus-within .search-icon { color: #4f46e5; }
+        .btn-add { width: 52px; height: 52px; border-radius: 50%; background: #4f46e5; color: white; border: none; font-size: 28px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 16px rgba(79,70,229,0.35); display: flex; align-items: center; justify-content: center; }
+        .btn-add:hover { transform: scale(1.08) rotate(90deg); background: #4338ca; box-shadow: 0 6px 24px rgba(79,70,229,0.45); }
+        .room-item { background: #f8fafc; border-radius: 14px; padding: 12px 16px; border: 2px solid #e2e8f0; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .room-item:hover { border-color: #94a3b8; }
+        .room-item .room-status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+        .room-status-libre { background: #22c55e; }
+        .room-status-ocupada { background: #ef4444; }
+        .room-status-reservada { background: #eab308; }
+        .room-image { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; background: #e2e8f0; flex-shrink: 0; }
+        .room-image-placeholder { width: 50px; height: 50px; border-radius: 12px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; flex-shrink: 0; font-size: 20px; }
+        .btn-sm { padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .btn-sm:hover { transform: scale(1.05); }
+        .btn-sm-primary { background: #eef2ff; color: #4f46e5; }
+        .btn-sm-danger { background: #fee2e2; color: #991b1b; }
+        .btn-sm-success { background: #dcfce7; color: #166534; }
+        .btn-sm-warning { background: #fef3c7; color: #92400e; }
+        .btn-sm-indigo { background: #e0e7ff; color: #4338ca; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; background: white; border-top: 1px solid #e2e8f0; z-index: 45; padding: 8px 12px; display: flex; justify-content: space-around; align-items: center; }
+        #bottomNav.hidden { display: none !important; }
+        .btn-logout { background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        .btn-logout:hover { background: #fee2e2; color: #991b1b; transform: scale(1.05); }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .toast-success { background: #22c55e !important; color: white !important; }
+        .toast-error { background: #ef4444 !important; color: white !important; }
+        .toast-info { background: #1e293b !important; color: white !important; }
+        .profile-image-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #e2e8f0; }
+        .room-actions { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+        .room-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 120px; }
+        .room-details { display: flex; flex-direction: column; }
+        .room-details .name { font-weight: 600; font-size: 13px; color: #1e293b; }
+        .room-details .type { font-size: 11px; color: #64748b; }
+        .room-details .price { font-size: 12px; font-weight: 600; color: #4f46e5; }
+        .room-status-text { font-size: 11px; font-weight: 500; padding: 2px 10px; border-radius: 12px; }
+        .status-text-libre { background: #dcfce7; color: #166534; }
+        .status-text-ocupada { background: #fee2e2; color: #991b1b; }
+        .status-text-reservada { background: #fef3c7; color: #92400e; }
+        #manageModal, #assignModal, #addPropertyModal, #profileModal, #editRoomModal, #filterModal, #contractModal, #editTenantModal, #paymentModal, #incidenciaModal, #resolverModal { display: none; }
+        #manageModal.active, #assignModal.active, #addPropertyModal.active, #profileModal.active, #editRoomModal.active, #filterModal.active, #contractModal.active, #editTenantModal.active, #paymentModal.active, #incidenciaModal.active, #resolverModal.active { display: flex; }
+        .filter-badge { background: #4f46e5; color: white; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
+        .contract-card { background: white; border-radius: 14px; padding: 14px 16px; border: 2px solid #e2e8f0; transition: all 0.2s; }
+        .contract-card:hover { border-color: #94a3b8; }
+        .contract-status { font-size: 11px; font-weight: 600; padding: 2px 12px; border-radius: 12px; }
+        .status-active { background: #dcfce7; color: #166534; }
+        .status-expiring { background: #fef3c7; color: #92400e; }
+        .status-expired { background: #fee2e2; color: #991b1b; }
+        .status-rejected { background: #f1f5f9; color: #64748b; }
+        .rental-type { font-size: 11px; background: #e0e7ff; color: #4338ca; padding: 2px 10px; border-radius: 12px; }
+        .subcategory-item { transition: all 0.2s; cursor: pointer; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; background: #f1f5f9; color: #64748b; border: 2px solid transparent; }
+        .subcategory-item:hover { background: #e2e8f0; }
+        .subcategory-item.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .tenant-card { background: white; border-radius: 14px; padding: 14px 16px; border: 2px solid #e2e8f0; transition: all 0.2s; }
+        .tenant-card:hover { border-color: #94a3b8; }
+        .filter-chip-contract { transition: all 0.2s; cursor: pointer; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; background: #f1f5f9; color: #64748b; border: 2px solid transparent; }
+        .filter-chip-contract:hover { background: #e2e8f0; }
+        .filter-chip-contract.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .header-search-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px 12px; background: white; border-bottom: 1px solid #f1f5f9; }
+        .filter-btn-header { background: none; border: 2px solid #e2e8f0; color: #94a3b8; font-size: 16px; cursor: pointer; transition: all 0.2s; padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; gap: 4px; }
+        .filter-btn-header:hover { border-color: #4f46e5; color: #4f46e5; }
+        .filter-btn-header .badge { background: #4f46e5; color: white; font-size: 10px; padding: 1px 6px; border-radius: 10px; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 18px; font-weight: 700; color: #1e293b; }
+        .category-item { transition: all 0.2s; cursor: pointer; padding: 6px 14px; border-radius: 20px; font-weight: 500; font-size: 12px; background: #f1f5f9; color: #64748b; border: 2px solid transparent; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+        .category-item:hover { background: #e2e8f0; }
+        .category-item.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .category-item.inactive { border-color: transparent; }
+        .kpi-card { background: white; border-radius: 14px; padding: 12px 14px; border: 2px solid #e2e8f0; transition: all 0.2s; flex: 1; min-width: 100px; }
+        .kpi-card:hover { border-color: #94a3b8; }
+        .kpi-value { font-size: 22px; font-weight: 700; color: #1e293b; }
+        .kpi-label { font-size: 11px; color: #64748b; font-weight: 500; }
+        .kpi-vs { font-size: 11px; font-weight: 600; }
+        .kpi-vs.up { color: #22c55e; }
+        .kpi-vs.down { color: #ef4444; }
+        .kpi-icon { font-size: 20px; color: #4f46e5; }
+        .greeting-text { font-size: 22px; font-weight: 700; color: #1e293b; }
+        .greeting-sub { font-size: 14px; color: #64748b; }
+        .payment-card { background: white; border-radius: 14px; padding: 12px 14px; border: 2px solid #e2e8f0; transition: all 0.2s; }
+        .payment-card:hover { border-color: #94a3b8; }
+        .month-selector { background: #f1f5f9; border-radius: 12px; padding: 8px 16px; border: none; outline: none; font-size: 14px; font-weight: 500; color: #1e293b; cursor: pointer; }
+        .month-selector:focus { border: 2px solid #4f46e5; }
+        .chart-container { background: white; border-radius: 14px; padding: 16px; border: 2px solid #e2e8f0; }
+        .bed-option { padding: 6px 14px; border-radius: 10px; border: 2px solid #e2e8f0; cursor: pointer; transition: all 0.2s; background: white; font-size: 13px; font-weight: 500; }
+        .bed-option:hover { border-color: #94a3b8; }
+        .bed-option.selected { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .service-check { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 10px; border: 2px solid #e2e8f0; cursor: pointer; transition: all 0.2s; background: white; }
+        .service-check:hover { border-color: #94a3b8; }
+        .service-check.selected { border-color: #4f46e5; background: #eef2ff; }
+        .service-check input { display: none; }
+        .range-slider { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: #e2e8f0; outline: none; transition: all 0.2s; }
+        .range-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #4f46e5; cursor: pointer; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .range-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #4f46e5; cursor: pointer; border: none; }
+        .gasto-card { background: white; border-radius: 14px; padding: 14px 16px; border: 2px solid #e2e8f0; transition: all 0.2s; }
+        .gasto-card:hover { border-color: #94a3b8; }
+        .incidencia-card { background: white; border-radius: 14px; padding: 14px 16px; border: 2px solid #e2e8f0; transition: all 0.2s; }
+        .incidencia-card:hover { border-color: #94a3b8; }
+        .status-incidencia { font-size: 11px; font-weight: 600; padding: 2px 12px; border-radius: 12px; }
+        .status-pendiente { background: #fef3c7; color: #92400e; }
+        .status-resuelta { background: #dcfce7; color: #166534; }
+        .incidencia-filter { transition: all 0.2s; cursor: pointer; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; background: #f1f5f9; color: #64748b; border: 2px solid transparent; }
+        .incidencia-filter:hover { background: #e2e8f0; }
+        .incidencia-filter.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .gasto-detail { font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="max-w-md mx-auto bg-[#f0f2f5] min-h-screen">
+
+        <!-- ==================== LOGIN ==================== -->
+        <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+            <div class="login-card">
+                <div class="text-center mb-8">
+                    <div class="text-3xl font-bold text-indigo-600 tracking-tight">🏡 ROOMYRENT</div>
+                    <p class="text-gray-400 text-sm mt-1 font-light">Find homes, villas and escapes</p>
+                    <p class="text-gray-300 text-xs mt-0.5">that match your lifestyle</p>
+                </div>
+                <div class="flex gap-3 mb-6">
+                    <button id="ownerTabBtn" class="role-tab active flex-1 text-center" onclick="setLoginRole('owner')">
+                        <i class="fas fa-user-tie mr-2"></i>Propietario
+                    </button>
+                    <button id="tenantTabBtn" class="role-tab inactive flex-1 text-center" onclick="setLoginRole('tenant')">
+                        <i class="fas fa-user mr-2"></i>Inquilino
+                    </button>
+                </div>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label><input type="email" id="loginEmail" class="login-input" placeholder="tu@email.com" required /></div>
+                    <div class="mb-5"><label class="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label><input type="password" id="loginPassword" class="login-input" placeholder="••••••••" required /></div>
+                    <button type="submit" class="login-btn"><span id="loginBtnText">Iniciar Sesión</span></button>
+                </form>
+                <div class="mt-5 text-center text-xs text-gray-400 space-y-1 border-t border-gray-100 pt-4">
+                    <p><span class="font-semibold text-gray-500">Propietario:</span> propietario@roomyrent.com / 123456</p>
+                    <p><span class="font-semibold text-gray-500">Inquilino:</span> inquilino@roomyrent.com / 123456</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== MAIN APP ==================== -->
+        <div id="mainApp" class="hidden">
+
+            <!-- HEADER -->
+            <div class="header-fixed header-top">
+                <span class="header-title">🏡 ROOMYRENT</span>
+                <div class="header-actions">
+                    <div class="profile-icon" id="profileIcon" onclick="openProfileModal()">CR</div>
+                    <button class="btn-logout" onclick="logout()" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTENIDO DINÁMICO -->
+            <div id="mainContent" class="px-4 py-3 space-y-4 pb-28">
+                <!-- Renderizado dinámico -->
+            </div>
+
+            <!-- BOTÓN FLOTANTE (solo propiedades) -->
+            <div id="floatButton" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-40 hidden">
+                <button class="btn-add" onclick="openAddPropertyModal()"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+
+        <!-- ==================== MODALES ==================== -->
+        <div id="filterModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-sliders-h text-indigo-600 mr-2"></i>Filtros avanzados</h3>
+                    <button onclick="closeFilterModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <span class="bed-option selected" data-status="all" onclick="selectStatusFilter(this, 'all')">Todos</span>
+                        <span class="bed-option" data-status="libre" onclick="selectStatusFilter(this, 'libre')">🟢 Libre</span>
+                        <span class="bed-option" data-status="ocupada" onclick="selectStatusFilter(this, 'ocupada')">🔴 Ocupado</span>
+                        <span class="bed-option" data-status="reservada" onclick="selectStatusFilter(this, 'reservada')">🟡 Reservado</span>
+                    </div>
+                </div>
+                <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Provincia</label><select id="filterProvince" class="login-input" onchange="applyFilters()"><option value="all">Todas</option><option value="Oregon">Oregon</option><option value="California">California</option><option value="Texas">Texas</option><option value="Florida">Florida</option><option value="Colorado">Colorado</option></select></div>
+                <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label><select id="filterCity" class="login-input" onchange="applyFilters()"><option value="all">Todas</option><option value="Mistybrook">Mistybrook</option><option value="Green Valley">Green Valley</option><option value="Oakwood Hills">Oakwood Hills</option><option value="Crystal Beach">Crystal Beach</option><option value="Pine Forest">Pine Forest</option></select></div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Rango mensual (€)</label>
+                    <div class="flex gap-3 mb-2"><input type="number" id="filterMinPrice" class="login-input" placeholder="Mínimo" value="0" onchange="applyFilters()" /><input type="number" id="filterMaxPrice" class="login-input" placeholder="Máximo" value="1000000" onchange="applyFilters()" /></div>
+                    <input type="range" class="range-slider" id="priceRange" min="0" max="1000000" value="500000" oninput="updatePriceRange(this.value)" />
+                    <div class="flex justify-between text-xs text-gray-400 mt-1"><span>€0</span><span id="rangeValue">€500.000</span><span>€1.000.000</span></div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Habitaciones</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <span class="bed-option selected" data-beds="all" onclick="selectBeds(this, 'all')">Todas</span>
+                        <span class="bed-option" data-beds="1" onclick="selectBeds(this, '1')">1</span>
+                        <span class="bed-option" data-beds="2" onclick="selectBeds(this, '2')">2</span>
+                        <span class="bed-option" data-beds="3" onclick="selectBeds(this, '3')">3</span>
+                        <span class="bed-option" data-beds="4" onclick="selectBeds(this, '4')">+4</span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Servicios</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <label class="service-check" onclick="toggleService(this)"><input type="checkbox" value="wifi" /> <i class="fas fa-wifi"></i> Wifi</label>
+                        <label class="service-check" onclick="toggleService(this)"><input type="checkbox" value="piscina" /> <i class="fas fa-swimmer"></i> Piscina</label>
+                        <label class="service-check" onclick="toggleService(this)"><input type="checkbox" value="garaje" /> <i class="fas fa-car"></i> Garaje</label>
+                    </div>
+                </div>
+                <button onclick="applyFiltersAndClose()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 transition">Ver resultados</button>
+            </div>
+        </div>
+
+        <!-- Resto de modales -->
+        <div id="manageModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-0">
+                <div class="relative">
+                    <img id="manageImage" src="" alt="Propiedad" class="w-full h-48 object-cover rounded-t-2xl" />
+                    <button onclick="closeManageModal()" class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm w-8 h-8 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 transition"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-5">
+                    <div class="flex justify-between items-start">
+                        <div><h3 id="manageTitle" class="text-xl font-bold text-gray-800">Brookside Haven</h3><p id="manageAddress" class="text-sm text-gray-500">Brookside Estate · Mistybrook</p><p id="manageCity" class="text-sm text-gray-500">Oregon, Estados Unidos</p><span id="manageRentalType" class="rental-type mt-1 inline-block">Completo</span></div>
+                        <button onclick="deleteProperty()" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 transition flex items-center gap-2"><i class="fas fa-trash"></i> Eliminar</button>
+                    </div>
+                    <div class="flex gap-2 mt-4 flex-wrap">
+                        <div class="bg-gray-100 rounded-xl px-3 py-2 text-center flex-1 min-w-[50px]"><i class="fas fa-tag text-indigo-500 text-sm"></i><p class="text-[10px] text-gray-500 mt-0.5">Categoría</p><p id="manageCategory" class="text-xs font-semibold text-gray-800">Villa</p></div>
+                        <div class="bg-gray-100 rounded-xl px-3 py-2 text-center flex-1 min-w-[50px]"><i class="fas fa-bed text-indigo-500 text-sm"></i><p class="text-[10px] text-gray-500 mt-0.5">Habitaciones</p><p id="manageBeds" class="text-xs font-semibold text-gray-800">3</p></div>
+                        <div class="bg-gray-100 rounded-xl px-3 py-2 text-center flex-1 min-w-[50px]"><i class="fas fa-bath text-indigo-500 text-sm"></i><p class="text-[10px] text-gray-500 mt-0.5">Baños</p><p id="manageBaths" class="text-xs font-semibold text-gray-800">2</p></div>
+                        <div class="bg-gray-100 rounded-xl px-3 py-2 text-center flex-1 min-w-[50px]"><i class="fas fa-vector-square text-indigo-500 text-sm"></i><p class="text-[10px] text-gray-500 mt-0.5">Metros²</p><p id="manageSqm" class="text-xs font-semibold text-gray-800">390</p></div>
+                    </div>
+                    <div class="mt-3 flex gap-3 text-xs bg-gray-50 rounded-xl p-3">
+                        <div class="flex-1 text-center"><p class="text-gray-500">Total</p><p id="manageTotalPrice" class="font-bold text-gray-800">€875.000</p></div>
+                        <div class="flex-1 text-center border-l border-gray-200"><p class="text-gray-500">Asignado</p><p id="manageAssignedPrice" class="font-bold text-green-600">€0</p></div>
+                        <div class="flex-1 text-center border-l border-gray-200"><p class="text-gray-500">Restante</p><p id="manageRemainingPrice" class="font-bold text-indigo-600">€875.000</p></div>
+                    </div>
+                    <div class="mt-4"><h4 class="font-semibold text-gray-800 mb-3"><i class="fas fa-door-open text-indigo-600 mr-2"></i>Habitaciones</h4><div id="manageRoomsList" class="space-y-3"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="editRoomModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 id="editRoomModalTitle" class="text-lg font-bold text-gray-800">Editar Habitación</h3><button onclick="closeEditRoomModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="editRoomForm" onsubmit="saveEditRoom(event)">
+                    <input type="hidden" id="editRoomPropertyId" /><input type="hidden" id="editRoomIndex" />
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label><input type="text" id="editRoomName" class="login-input" placeholder="Habitación 1" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label><select id="editRoomType" class="login-input"><option value="Individual">Individual</option><option value="Estándar">Estándar</option><option value="Doble">Doble</option><option value="Suite">Suite</option></select></div>
+                    <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Imagen</label><input type="file" id="editRoomImage" class="login-input p-2" accept="image/*" onchange="previewEditRoomImage(event)" /><div id="editRoomImagePreview" class="mt-2 hidden"><img id="editRoomImagePreviewImg" class="w-16 h-16 rounded-lg object-cover" /></div></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Guardar</button><button type="button" onclick="closeEditRoomModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="assignModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 id="assignModalTitle" class="text-lg font-bold text-gray-800">Asignar Inquilino</h3><button onclick="closeAssignModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="assignForm" onsubmit="saveAssignTenant(event)">
+                    <input type="hidden" id="assignPropertyId" /><input type="hidden" id="assignRoomIndex" />
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label><input type="text" id="assignName" class="login-input" placeholder="Nombre y apellidos" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">DNI/NIE *</label><input type="text" id="assignDni" class="login-input" placeholder="12345678A" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Email *</label><input type="email" id="assignEmail" class="login-input" placeholder="inquilino@email.com" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="assignPhone" class="login-input" placeholder="+34 600 000 000" /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Precio (€) *</label><input type="number" id="assignPrice" class="login-input" placeholder="750" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Fecha inicio *</label><input type="date" id="assignStartDate" class="login-input" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Fecha fin *</label><input type="date" id="assignEndDate" class="login-input" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Contraseña para el inquilino *</label><input type="text" id="assignPassword" class="login-input" placeholder="Contraseña temporal" required /></div>
+                    <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Foto</label><input type="file" id="assignImage" class="login-input p-2" accept="image/*" onchange="previewAssignImage(event)" /><div id="assignImagePreview" class="mt-2 hidden"><img id="assignImagePreviewImg" class="w-16 h-16 rounded-full object-cover" /></div></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Guardar</button><button type="button" onclick="closeAssignModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="addPropertyModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Nueva Propiedad</h3><button onclick="closeAddPropertyModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="addPropertyForm" onsubmit="saveNewProperty(event)">
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label><input type="text" id="newTitle" class="login-input" placeholder="Ej: Villa Los Pinos" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Dirección *</label><input type="text" id="newAddress" class="login-input" placeholder="Calle Principal 123" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Ciudad *</label><input type="text" id="newCity" class="login-input" placeholder="Madrid" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Provincia *</label><input type="text" id="newProvince" class="login-input" placeholder="Madrid" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Categoría *</label><select id="newCategory" class="login-input"><option value="villa">Villa</option><option value="house">Casa</option><option value="apartment">Apartamento</option><option value="bungalow">Bungalow</option></select></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Tipo de alquiler *</label><select id="newRentalType" class="login-input"><option value="complete">Completo</option><option value="rooms">Por habitaciones</option></select></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Habitaciones *</label><input type="number" id="newBeds" class="login-input" placeholder="3" min="1" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Baños *</label><input type="number" id="newBaths" class="login-input" placeholder="2" min="1" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Metros² *</label><input type="number" id="newSqm" class="login-input" placeholder="390" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Precio total (€)</label><input type="number" id="newPrice" class="login-input" placeholder="875000" /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Servicios</label><div class="flex gap-2 flex-wrap"><label class="service-check" onclick="toggleServiceAdd(this)"><input type="checkbox" value="wifi" /> <i class="fas fa-wifi"></i> Wifi</label><label class="service-check" onclick="toggleServiceAdd(this)"><input type="checkbox" value="piscina" /> <i class="fas fa-swimmer"></i> Piscina</label><label class="service-check" onclick="toggleServiceAdd(this)"><input type="checkbox" value="garaje" /> <i class="fas fa-car"></i> Garaje</label></div></div>
+                    <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Imagen</label><input type="file" id="newImage" class="login-input p-2" accept="image/*" onchange="previewNewImage(event)" /><div id="newImagePreview" class="mt-2 hidden"><img id="newImagePreviewImg" class="w-32 h-24 object-cover rounded-lg" /></div></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Crear</button><button type="button" onclick="closeAddPropertyModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="profileModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-user-cog mr-2"></i>Mi Perfil</h3><button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="profileForm" onsubmit="saveProfile(event)">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="relative"><img id="profileAvatarImg" src="" class="profile-image-preview hidden" /><div id="profileAvatarInitials" class="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-3xl font-semibold">CR</div><input type="file" id="profileImageInput" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onchange="previewProfileImage(event)" /></div>
+                        <div><p class="font-medium text-gray-800" id="profileNameDisplay">Carlos Rodríguez</p><p class="text-sm text-gray-500" id="profileEmailDisplay">propietario@roomyrent.com</p></div>
+                    </div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label><input type="text" id="profileName" class="login-input" placeholder="Nombre completo" /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="profilePhone" class="login-input" placeholder="+34 600 000 000" /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" id="profileEmail" class="login-input" placeholder="email@ejemplo.com" /></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Guardar</button><button type="button" onclick="closeProfileModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="editTenantModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 id="editTenantModalTitle" class="text-lg font-bold text-gray-800">Editar Inquilino</h3><button onclick="closeEditTenantModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="editTenantForm" onsubmit="saveEditTenant(event)">
+                    <input type="hidden" id="editTenantId" />
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label><input type="text" id="editTenantName" class="login-input" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">DNI/NIE</label><input type="text" id="editTenantDni" class="login-input" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" id="editTenantEmail" class="login-input" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="editTenantPhone" class="login-input" /></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Guardar</button><button type="button" onclick="closeEditTenantModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="contractModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 id="contractModalTitle" class="text-lg font-bold text-gray-800">Detalle de Contrato</h3><button onclick="closeContractModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <div id="contractContent" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <div id="paymentModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-file-invoice mr-2"></i>Detalle de Pago</h3><button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <div id="paymentContent" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <div id="incidenciaModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 id="incidenciaModalTitle" class="text-lg font-bold text-gray-800">Nueva Incidencia</h3><button onclick="closeIncidenciaModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="incidenciaForm" onsubmit="saveIncidencia(event)">
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Título *</label><input type="text" id="incidenciaTitle" class="login-input" placeholder="Ej: Fuga de agua" required /></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Vivienda</label><select id="incidenciaProperty" class="login-input"><option value="">Seleccionar</option></select></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Inquilino</label><select id="incidenciaTenant" class="login-input"><option value="">Seleccionar</option></select></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Descripción *</label><textarea id="incidenciaDesc" class="login-input" rows="3" placeholder="Describe la incidencia..." required></textarea></div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Prioridad</label><select id="incidenciaPriority" class="login-input"><option value="baja">Baja</option><option value="media">Media</option><option value="alta">Alta</option></select></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Guardar</button><button type="button" onclick="closeIncidenciaModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="resolverModal" class="modal-overlay">
+            <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-6">
+                <div class="flex justify-between items-center mb-4"><h3 id="resolverModalTitle" class="text-lg font-bold text-gray-800">Resolver Incidencia</h3><button onclick="closeResolverModal()" class="text-gray-400 hover:text-gray-600 transition text-xl"><i class="fas fa-times"></i></button></div>
+                <form id="resolverForm" onsubmit="saveResolver(event)">
+                    <input type="hidden" id="resolverIncidenciaId" />
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Descripción de la solución *</label><textarea id="resolverDesc" class="login-input" rows="3" placeholder="Describe cómo se resolvió..." required></textarea></div>
+                    <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Adjuntar documento/imagen</label><input type="file" id="resolverFile" class="login-input p-2" accept=".pdf,.jpg,.png,.jpeg" /></div>
+                    <div class="flex gap-3"><button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Resolver</button><button type="button" onclick="closeResolverModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-200 transition">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== TOAST ==================== -->
+        <div id="toast" class="toast hidden fixed top-20 left-1/2 transform -translate-x-1/2 text-white px-6 py-3.5 rounded-full shadow-2xl text-sm font-medium z-[100] max-w-[90%] text-center">
+            <span id="toastMessage"></span>
+        </div>
+
+        <!-- ==================== BOTTOM NAV ==================== -->
+        <div id="bottomNav" class="bottom-nav hidden">
+            <div class="flex flex-col items-center text-xs tab-active bottom-nav-item" onclick="navigateTo('resumen')"><i class="fas fa-chart-pie text-xl"></i><span class="mt-0.5 text-[10px]">Resumen</span></div>
+            <div class="flex flex-col items-center text-xs tab-inactive bottom-nav-item" onclick="navigateTo('propiedades')"><i class="fas fa-building text-xl"></i><span class="mt-0.5 text-[10px]">Propiedades</span></div>
+            <div class="flex flex-col items-center text-xs tab-inactive bottom-nav-item" onclick="navigateTo('inquilinos')"><i class="fas fa-users text-xl"></i><span class="mt-0.5 text-[10px]">Inquilinos</span></div>
+            <div class="flex flex-col items-center text-xs tab-inactive bottom-nav-item" onclick="navigateTo('gastos')"><i class="fas fa-coins text-xl"></i><span class="mt-0.5 text-[10px]">Gastos</span></div>
+            <div class="flex flex-col items-center text-xs tab-inactive bottom-nav-item" onclick="navigateTo('incidencias')"><i class="fas fa-exclamation-triangle text-xl"></i><span class="mt-0.5 text-[10px]">Incidencias</span></div>
+        </div>
+
+    </div>
+
+    <script>
 // ============================================
 // CONFIGURACIÓN SUPABASE - VERSIÓN DEFINITIVA
 // ============================================
@@ -1768,4 +2201,7 @@ document.addEventListener('keydown', (e) => {
         closeResolverModal();
     }
 });
-</script>
+    </script>
+
+</body>
+</html>
