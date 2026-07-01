@@ -431,1668 +431,1668 @@
 
     </div>
 
-   <script>
-// ============================================
-// CONFIGURACIÓN SUPABASE - SOLO UNA DECLARACIÓN
-// ============================================
-const SUPABASE_URL = 'https://wadujlpbpatkzdpnuqxl.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_bSozVxnQyrkA4kAmlU6WZA_SJC1pY-b';
+    <script>
+    // ============================================
+    // CONFIGURACIÓN SUPABASE - USANDO supabaseClient
+    // ============================================
+    const SUPABASE_URL = 'https://wadujlpbpatkzdpnuqxl.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_bSozVxnQyrkA4kAmlU6WZA_SJC1pY-b';
 
-// ✅ SOLO UNA VEZ - declaramos supabase aquí
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // ✅ Usamos supabaseClient para evitar conflictos con la variable global
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-console.log('✅ Supabase client creado');
+    console.log('✅ Supabase client creado');
 
-// ============================================
-// ESTADO GLOBAL
-// ============================================
-let state = {
-    currentUser: null,
-    role: null,
-    currentView: 'resumen',
-    properties: [],
-    tenants: [],
-    contracts: [],
-    payments: [],
-    expenses: [],
-    incidents: [],
-    filters: { province: 'all', city: 'all', minPrice: 0, maxPrice: 1000000, beds: 'all', services: [], status: 'all' },
-    contractFilter: 'all',
-    tenantSubcategory: 'tenants',
-    selectedMonth: new Date().toISOString().slice(0, 7),
-    incidenciaFilter: 'todas',
-    currentCategory: 'all',
-    currentManagePropertyId: null,
-    searchTerm: ''
-};
+    // ============================================
+    // ESTADO GLOBAL
+    // ============================================
+    let state = {
+        currentUser: null,
+        role: null,
+        currentView: 'resumen',
+        properties: [],
+        tenants: [],
+        contracts: [],
+        payments: [],
+        expenses: [],
+        incidents: [],
+        filters: { province: 'all', city: 'all', minPrice: 0, maxPrice: 1000000, beds: 'all', services: [], status: 'all' },
+        contractFilter: 'all',
+        tenantSubcategory: 'tenants',
+        selectedMonth: new Date().toISOString().slice(0, 7),
+        incidenciaFilter: 'todas',
+        currentCategory: 'all',
+        currentManagePropertyId: null,
+        searchTerm: ''
+    };
 
-let CHART_DATA = {
-    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-    ingresos: [0, 0, 0, 0, 0, 0],
-    pendiente: [0, 0, 0, 0, 0, 0]
-};
+    let CHART_DATA = {
+        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+        ingresos: [0, 0, 0, 0, 0, 0],
+        pendiente: [0, 0, 0, 0, 0, 0]
+    };
 
-let chartInstance = null;
+    let chartInstance = null;
 
-// ============================================
-// FUNCIONES DE AUTENTICACIÓN
-// ============================================
-let loginRole = 'owner';
+    // ============================================
+    // FUNCIONES DE AUTENTICACIÓN
+    // ============================================
+    let loginRole = 'owner';
 
-function setLoginRole(role) {
-    loginRole = role;
-    const ownerBtn = document.getElementById('ownerTabBtn');
-    const tenantBtn = document.getElementById('tenantTabBtn');
-    const btnText = document.getElementById('loginBtnText');
-    if (role === 'owner') {
-        ownerBtn.className = 'role-tab active flex-1 text-center';
-        tenantBtn.className = 'role-tab inactive flex-1 text-center';
-        btnText.textContent = 'Iniciar Sesión';
-        document.getElementById('loginEmail').placeholder = 'propietario@roomyrent.com';
-    } else {
-        tenantBtn.className = 'role-tab active flex-1 text-center';
-        ownerBtn.className = 'role-tab inactive flex-1 text-center';
-        btnText.textContent = 'Iniciar Sesión';
-        document.getElementById('loginEmail').placeholder = 'inquilino@roomyrent.com';
-    }
-}
-
-async function handleLogin(e) {
-    e.preventDefault();
-    
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-
-    try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (error) {
-            showToast('❌ ' + error.message, 'error');
-            return;
-        }
-
-        const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', email)
-            .single();
-
-        if (userError) {
-            showToast('❌ Error al obtener datos del usuario', 'error');
-            return;
-        }
-
-        state.currentUser = {
-            id: userData.id,
-            name: userData.name,
-            email: userData.email,
-            role: userData.role,
-            phone: userData.phone || '',
-            image: userData.image || null,
-            initials: userData.name.split(' ').map(n => n[0]).join('').toUpperCase()
-        };
-        state.role = userData.role;
-
-        enterApp();
-        showToast(`✅ ¡Bienvenido ${userData.name}!`, 'success');
-
-    } catch (error) {
-        showToast('❌ Error al iniciar sesión', 'error');
-        console.error(error);
-    }
-}
-
-async function logout() {
-    if (!confirm('¿Estás seguro de cerrar sesión?')) return;
-    await supabase.auth.signOut();
-    state.currentUser = null;
-    state.role = null;
-    document.getElementById('mainApp').classList.add('hidden');
-    document.getElementById('bottomNav').classList.add('hidden');
-    document.getElementById('loginScreen').classList.remove('hidden');
-    document.getElementById('loginEmail').value = '';
-    document.getElementById('loginPassword').value = '';
-    showToast('👋 Sesión cerrada', 'info');
-}
-
-function enterApp() {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-    document.getElementById('bottomNav').classList.remove('hidden');
-    updateProfileIcon();
-    loadInitialData();
-}
-
-function updateProfileIcon() {
-    const icon = document.getElementById('profileIcon');
-    if (state.currentUser) {
-        if (state.currentUser.image) {
-            icon.innerHTML = `<img src="${state.currentUser.image}" />`;
+    function setLoginRole(role) {
+        loginRole = role;
+        const ownerBtn = document.getElementById('ownerTabBtn');
+        const tenantBtn = document.getElementById('tenantTabBtn');
+        const btnText = document.getElementById('loginBtnText');
+        if (role === 'owner') {
+            ownerBtn.className = 'role-tab active flex-1 text-center';
+            tenantBtn.className = 'role-tab inactive flex-1 text-center';
+            btnText.textContent = 'Iniciar Sesión';
+            document.getElementById('loginEmail').placeholder = 'propietario@roomyrent.com';
         } else {
-            icon.textContent = state.currentUser.initials || 'U';
-            icon.style.background = '#4f46e5';
-            icon.style.color = 'white';
+            tenantBtn.className = 'role-tab active flex-1 text-center';
+            ownerBtn.className = 'role-tab inactive flex-1 text-center';
+            btnText.textContent = 'Iniciar Sesión';
+            document.getElementById('loginEmail').placeholder = 'inquilino@roomyrent.com';
         }
     }
-}
 
-// ============================================
-// CARGA DE DATOS INICIALES
-// ============================================
-async function loadInitialData() {
-    try {
-        console.log('✅ Cargando datos desde Supabase...');
-
-        let query = supabase.from('properties').select('*');
+    async function handleLogin(e) {
+        e.preventDefault();
         
-        if (state.role === 'tenant') {
-            const { data: tenantContracts } = await supabase
-                .from('contracts')
-                .select('property_id')
-                .eq('tenant_id', state.currentUser.id)
-                .eq('status', 'active');
-            
-            const propertyIds = tenantContracts.map(c => c.property_id);
-            if (propertyIds.length > 0) {
-                query = query.in('id', propertyIds);
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (error) {
+                showToast('❌ ' + error.message, 'error');
+                return;
+            }
+
+            const { data: userData, error: userError } = await supabaseClient
+                .from('users')
+                .select('*')
+                .eq('email', email)
+                .single();
+
+            if (userError) {
+                showToast('❌ Error al obtener datos del usuario', 'error');
+                return;
+            }
+
+            state.currentUser = {
+                id: userData.id,
+                name: userData.name,
+                email: userData.email,
+                role: userData.role,
+                phone: userData.phone || '',
+                image: userData.image || null,
+                initials: userData.name.split(' ').map(n => n[0]).join('').toUpperCase()
+            };
+            state.role = userData.role;
+
+            enterApp();
+            showToast(`✅ ¡Bienvenido ${userData.name}!`, 'success');
+
+        } catch (error) {
+            showToast('❌ Error al iniciar sesión', 'error');
+            console.error(error);
+        }
+    }
+
+    async function logout() {
+        if (!confirm('¿Estás seguro de cerrar sesión?')) return;
+        await supabaseClient.auth.signOut();
+        state.currentUser = null;
+        state.role = null;
+        document.getElementById('mainApp').classList.add('hidden');
+        document.getElementById('bottomNav').classList.add('hidden');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+        showToast('👋 Sesión cerrada', 'info');
+    }
+
+    function enterApp() {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('bottomNav').classList.remove('hidden');
+        updateProfileIcon();
+        loadInitialData();
+    }
+
+    function updateProfileIcon() {
+        const icon = document.getElementById('profileIcon');
+        if (state.currentUser) {
+            if (state.currentUser.image) {
+                icon.innerHTML = `<img src="${state.currentUser.image}" />`;
             } else {
-                query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                icon.textContent = state.currentUser.initials || 'U';
+                icon.style.background = '#4f46e5';
+                icon.style.color = 'white';
             }
         }
-        
-        const { data: properties, error: propError } = await query;
-        if (!propError) state.properties = properties || [];
-
-        if (state.role === 'owner') {
-            const { data: tenants, error: tenantError } = await supabase
-                .from('tenants')
-                .select('*');
-            if (!tenantError) state.tenants = tenants || [];
-        }
-
-        let contractQuery = supabase.from('contracts').select('*');
-        if (state.role === 'tenant') {
-            contractQuery = contractQuery.eq('tenant_id', state.currentUser.id);
-        }
-        const { data: contracts, error: contractError } = await contractQuery;
-        if (!contractError) state.contracts = contracts || [];
-
-        if (state.role === 'owner') {
-            const { data: payments, error: paymentError } = await supabase
-                .from('payments')
-                .select('*');
-            if (!paymentError) state.payments = payments || [];
-        }
-
-        if (state.role === 'owner') {
-            const { data: expenses, error: expenseError } = await supabase
-                .from('expenses')
-                .select('*');
-            if (!expenseError) state.expenses = expenses || [];
-        }
-
-        let incidentQuery = supabase.from('incidents').select('*');
-        if (state.role === 'tenant') {
-            incidentQuery = incidentQuery.eq('tenant_id', state.currentUser.id);
-        }
-        const { data: incidents, error: incidentError } = await incidentQuery;
-        if (!incidentError) state.incidents = incidents || [];
-
-        navigateTo('resumen');
-        console.log('✅ Datos cargados correctamente');
-
-    } catch (error) {
-        console.error('Error cargando datos:', error);
-        showToast('❌ Error al cargar datos', 'error');
-    }
-}
-
-// ============================================
-// NAVEGACIÓN
-// ============================================
-function navigateTo(view) {
-    state.currentView = view;
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.classList.remove('tab-active');
-        item.classList.add('tab-inactive');
-    });
-    const tabs = document.querySelectorAll('.bottom-nav-item');
-    const index = { 'resumen': 0, 'propiedades': 1, 'inquilinos': 2, 'gastos': 3, 'incidencias': 4 } [view] || 0;
-    if (tabs[index]) {
-        tabs[index].classList.remove('tab-inactive');
-        tabs[index].classList.add('tab-active');
     }
 
-    const mainContent = document.getElementById('mainContent');
-    const floatBtn = document.getElementById('floatButton');
+    // ============================================
+    // CARGA DE DATOS INICIALES
+    // ============================================
+    async function loadInitialData() {
+        try {
+            console.log('✅ Cargando datos desde Supabase...');
 
-    if (view === 'propiedades') {
-        floatBtn.classList.remove('hidden');
-        mainContent.innerHTML = `
-            <div class="flex items-center gap-2 mb-3">
-                <button onclick="openFilterModal()" class="filter-btn-header">
-                    <i class="fas fa-sliders-h"></i>
-                    <span id="filterBadge" class="badge hidden">0</span>
-                </button>
-                <div class="search-box flex-1">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="searchInput" placeholder="Buscar..." oninput="filterProperties()" />
-                    <button onclick="document.getElementById('searchInput').value=''; filterProperties();" class="text-gray-400 hover:text-gray-600 transition">
-                        <i class="fas fa-times-circle"></i>
+            let query = supabaseClient.from('properties').select('*');
+            
+            if (state.role === 'tenant') {
+                const { data: tenantContracts } = await supabaseClient
+                    .from('contracts')
+                    .select('property_id')
+                    .eq('tenant_id', state.currentUser.id)
+                    .eq('status', 'active');
+                
+                const propertyIds = tenantContracts.map(c => c.property_id);
+                if (propertyIds.length > 0) {
+                    query = query.in('id', propertyIds);
+                } else {
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
+            }
+            
+            const { data: properties, error: propError } = await query;
+            if (!propError) state.properties = properties || [];
+
+            if (state.role === 'owner') {
+                const { data: tenants, error: tenantError } = await supabaseClient
+                    .from('tenants')
+                    .select('*');
+                if (!tenantError) state.tenants = tenants || [];
+            }
+
+            let contractQuery = supabaseClient.from('contracts').select('*');
+            if (state.role === 'tenant') {
+                contractQuery = contractQuery.eq('tenant_id', state.currentUser.id);
+            }
+            const { data: contracts, error: contractError } = await contractQuery;
+            if (!contractError) state.contracts = contracts || [];
+
+            if (state.role === 'owner') {
+                const { data: payments, error: paymentError } = await supabaseClient
+                    .from('payments')
+                    .select('*');
+                if (!paymentError) state.payments = payments || [];
+            }
+
+            if (state.role === 'owner') {
+                const { data: expenses, error: expenseError } = await supabaseClient
+                    .from('expenses')
+                    .select('*');
+                if (!expenseError) state.expenses = expenses || [];
+            }
+
+            let incidentQuery = supabaseClient.from('incidents').select('*');
+            if (state.role === 'tenant') {
+                incidentQuery = incidentQuery.eq('tenant_id', state.currentUser.id);
+            }
+            const { data: incidents, error: incidentError } = await incidentQuery;
+            if (!incidentError) state.incidents = incidents || [];
+
+            navigateTo('resumen');
+            console.log('✅ Datos cargados correctamente');
+
+        } catch (error) {
+            console.error('Error cargando datos:', error);
+            showToast('❌ Error al cargar datos', 'error');
+        }
+    }
+
+    // ============================================
+    // NAVEGACIÓN
+    // ============================================
+    function navigateTo(view) {
+        state.currentView = view;
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.classList.remove('tab-active');
+            item.classList.add('tab-inactive');
+        });
+        const tabs = document.querySelectorAll('.bottom-nav-item');
+        const index = { 'resumen': 0, 'propiedades': 1, 'inquilinos': 2, 'gastos': 3, 'incidencias': 4 } [view] || 0;
+        if (tabs[index]) {
+            tabs[index].classList.remove('tab-inactive');
+            tabs[index].classList.add('tab-active');
+        }
+
+        const mainContent = document.getElementById('mainContent');
+        const floatBtn = document.getElementById('floatButton');
+
+        if (view === 'propiedades') {
+            floatBtn.classList.remove('hidden');
+            mainContent.innerHTML = `
+                <div class="flex items-center gap-2 mb-3">
+                    <button onclick="openFilterModal()" class="filter-btn-header">
+                        <i class="fas fa-sliders-h"></i>
+                        <span id="filterBadge" class="badge hidden">0</span>
+                    </button>
+                    <div class="search-box flex-1">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="searchInput" placeholder="Buscar..." oninput="filterProperties()" />
+                        <button onclick="document.getElementById('searchInput').value=''; filterProperties();" class="text-gray-400 hover:text-gray-600 transition">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2" id="categoryContainer">
+                    <span class="category-item active" data-category="all" onclick="filterByCategory(this, 'all')"><i class="fas fa-th-large"></i> Todas</span>
+                    <span class="category-item inactive" data-category="house" onclick="filterByCategory(this, 'house')"><i class="fas fa-house-chimney"></i> Casa</span>
+                    <span class="category-item inactive" data-category="villa" onclick="filterByCategory(this, 'villa')"><i class="fas fa-home"></i> Villa</span>
+                    <span class="category-item inactive" data-category="apartment" onclick="filterByCategory(this, 'apartment')"><i class="fas fa-building"></i> Apartamento</span>
+                    <span class="category-item inactive" data-category="bungalow" onclick="filterByCategory(this, 'bungalow')"><i class="fas fa-house"></i> Bungalow</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Mostrando <span id="propertyCount">0</span> viviendas</span>
+                </div>
+                <div id="propertyList" class="space-y-4"></div>
+            `;
+            const cat = state.currentCategory || 'all';
+            document.querySelectorAll('.category-item').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('inactive');
+                if (el.dataset.category === cat) { el.classList.remove('inactive');
+                    el.classList.add('active'); }
+            });
+            renderProperties();
+            showToast('🏢 Propiedades', 'info');
+        } else if (view === 'inquilinos') {
+            floatBtn.classList.add('hidden');
+            mainContent.innerHTML = `
+                <div class="mb-3">
+                    <div class="flex gap-2 mb-3">
+                        <span class="subcategory-item active" data-sub="tenants" onclick="setTenantSubcategory('tenants')">Inquilinos</span>
+                        <span class="subcategory-item" data-sub="contracts" onclick="setTenantSubcategory('contracts')">Contratos</span>
+                    </div>
+                    <div id="contractFilters" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style="display:none;">
+                        <span class="filter-chip-contract active" data-filter="all" onclick="filterContracts('all')">Todos</span>
+                        <span class="filter-chip-contract" data-filter="active" onclick="filterContracts('active')">Activos</span>
+                        <span class="filter-chip-contract" data-filter="expiring" onclick="filterContracts('expiring')">A punto de caducar</span>
+                        <span class="filter-chip-contract" data-filter="expired" onclick="filterContracts('expired')">Vencidos</span>
+                        <span class="filter-chip-contract" data-filter="rejected" onclick="filterContracts('rejected')">Desestimados</span>
+                    </div>
+                    <div class="search-box mt-2">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="contractSearch" placeholder="Buscar por nombre o dirección..." oninput="renderContracts()" />
+                    </div>
+                </div>
+                <div id="contractContainer" class="space-y-3"></div>
+            `;
+            const filters = document.getElementById('contractFilters');
+            if (filters) filters.style.display = state.tenantSubcategory === 'contracts' ? 'flex' : 'none';
+            renderContracts();
+            showToast('👥 Inquilinos', 'info');
+        } else if (view === 'gastos') {
+            floatBtn.classList.add('hidden');
+            const propertyOptions = state.properties.map(p =>
+                `<option value="${p.id}">${p.title}</option>`
+            ).join('');
+            mainContent.innerHTML = `
+                <div class="bg-white rounded-2xl p-4 card-shadow">
+                    <h3 class="font-semibold text-gray-800 mb-3">💰 REPARTIR GASTOS AUTOMÁTICOS</h3>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Vivienda</label>
+                        <select id="gastoProperty" class="login-input">
+                            <option value="">Seleccionar vivienda</option>
+                            ${propertyOptions}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de gasto</label>
+                        <select id="gastoType" class="login-input">
+                            <option value="luz">Luz</option>
+                            <option value="agua">Agua</option>
+                            <option value="internet">Internet</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Mes</label><select id="gastoMonth" class="login-input"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Año</label><input type="number" id="gastoYear" class="login-input" placeholder="2024" value="${new Date().getFullYear()}" /></div>
+                    </div>
+                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Importe factura (€)</label><input type="number" id="gastoAmount" class="login-input" placeholder="150.00" step="0.01" /></div>
+                    <button onclick="repartirGastos()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Repartir entre inquilinos</button>
+                </div>
+                <div class="bg-white rounded-2xl p-4 card-shadow">
+                    <h3 class="font-semibold text-gray-800 mb-3">📋 Histórico de gastos</h3>
+                    <div id="gastosList" class="space-y-2"></div>
+                </div>
+            `;
+            renderGastos();
+            showToast('💰 Gastos', 'info');
+        } else if (view === 'incidencias') {
+            floatBtn.classList.add('hidden');
+            mainContent.innerHTML = `
+                <div class="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                    <span class="incidencia-filter active" data-filter="todas" onclick="filterIncidencias(this, 'todas')">Todas</span>
+                    <span class="incidencia-filter" data-filter="pendiente" onclick="filterIncidencias(this, 'pendiente')">Abiertas</span>
+                    <span class="incidencia-filter" data-filter="resuelta" onclick="filterIncidencias(this, 'resuelta')">Resueltas</span>
+                </div>
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="search-box flex-1">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="incidenciaSearch" placeholder="Buscar incidencia..." oninput="renderIncidencias()" />
+                    </div>
+                    <button onclick="openAddIncidencia()" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition whitespace-nowrap">
+                        <i class="fas fa-plus mr-1"></i>Nueva
                     </button>
                 </div>
-            </div>
-            <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2" id="categoryContainer">
-                <span class="category-item active" data-category="all" onclick="filterByCategory(this, 'all')"><i class="fas fa-th-large"></i> Todas</span>
-                <span class="category-item inactive" data-category="house" onclick="filterByCategory(this, 'house')"><i class="fas fa-house-chimney"></i> Casa</span>
-                <span class="category-item inactive" data-category="villa" onclick="filterByCategory(this, 'villa')"><i class="fas fa-home"></i> Villa</span>
-                <span class="category-item inactive" data-category="apartment" onclick="filterByCategory(this, 'apartment')"><i class="fas fa-building"></i> Apartamento</span>
-                <span class="category-item inactive" data-category="bungalow" onclick="filterByCategory(this, 'bungalow')"><i class="fas fa-house"></i> Bungalow</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-500">Mostrando <span id="propertyCount">0</span> viviendas</span>
-            </div>
-            <div id="propertyList" class="space-y-4"></div>
-        `;
-        const cat = state.currentCategory || 'all';
-        document.querySelectorAll('.category-item').forEach(el => {
-            el.classList.remove('active');
-            el.classList.add('inactive');
-            if (el.dataset.category === cat) { el.classList.remove('inactive');
-                el.classList.add('active'); }
-        });
-        renderProperties();
-        showToast('🏢 Propiedades', 'info');
-    } else if (view === 'inquilinos') {
-        floatBtn.classList.add('hidden');
+                <div id="incidenciasList" class="space-y-3"></div>
+            `;
+            actualizarSelectoresIncidencias();
+            renderIncidencias();
+            showToast('⚠️ Incidencias', 'info');
+        } else {
+            floatBtn.classList.add('hidden');
+            renderResumen();
+        }
+    }
+
+    // ============================================
+    // RENDER RESUMEN
+    // ============================================
+    function renderResumen() {
+        const mainContent = document.getElementById('mainContent');
+        const name = state.currentUser ? state.currentUser.name : 'Propietario';
+        const totalProperties = state.properties.length;
+        const totalTenants = state.role === 'owner' ? state.tenants.length : 0;
+        const totalContracts = state.contracts.length;
+        const expiringContracts = state.contracts.filter(c => c.status === 'expiring').length;
+        const overduePayments = state.payments.filter(p => p.status === 'overdue');
+        const paidPayments = state.payments.filter(p => p.status === 'paid');
+        const totalPaid = paidPayments.reduce((s, p) => s + p.amount, 0);
+
         mainContent.innerHTML = `
-            <div class="mb-3">
-                <div class="flex gap-2 mb-3">
-                    <span class="subcategory-item active" data-sub="tenants" onclick="setTenantSubcategory('tenants')">Inquilinos</span>
-                    <span class="subcategory-item" data-sub="contracts" onclick="setTenantSubcategory('contracts')">Contratos</span>
-                </div>
-                <div id="contractFilters" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style="display:none;">
-                    <span class="filter-chip-contract active" data-filter="all" onclick="filterContracts('all')">Todos</span>
-                    <span class="filter-chip-contract" data-filter="active" onclick="filterContracts('active')">Activos</span>
-                    <span class="filter-chip-contract" data-filter="expiring" onclick="filterContracts('expiring')">A punto de caducar</span>
-                    <span class="filter-chip-contract" data-filter="expired" onclick="filterContracts('expired')">Vencidos</span>
-                    <span class="filter-chip-contract" data-filter="rejected" onclick="filterContracts('rejected')">Desestimados</span>
-                </div>
-                <div class="search-box mt-2">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="contractSearch" placeholder="Buscar por nombre o dirección..." oninput="renderContracts()" />
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">👋</span>
+                <div>
+                    <p class="greeting-text">Hola, ${name}</p>
+                    <p class="greeting-sub">Bienvenido de vuelta</p>
                 </div>
             </div>
-            <div id="contractContainer" class="space-y-3"></div>
+            <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700">Selecciona Mes/Año:</label>
+                <input type="month" id="monthSelector" class="month-selector" value="${state.selectedMonth}" onchange="updateResumenDashboard()" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="kpi-card">
+                    <div class="flex items-center gap-2"><i class="fas fa-building kpi-icon"></i><span class="kpi-label">Viviendas</span></div>
+                    <p class="kpi-value">${totalProperties}</p>
+                    <span class="kpi-vs up">↑ 0 vs mes anterior</span>
+                </div>
+                <div class="kpi-card">
+                    <div class="flex items-center gap-2"><i class="fas fa-users kpi-icon"></i><span class="kpi-label">Inquilinos</span></div>
+                    <p class="kpi-value">${totalTenants}</p>
+                    <span class="kpi-vs up">↑ 0 vs mes anterior</span>
+                </div>
+                <div class="kpi-card">
+                    <div class="flex items-center gap-2"><i class="fas fa-clock kpi-icon"></i><span class="kpi-label">Pago pdte</span></div>
+                    <p class="kpi-value">${overduePayments.length}</p>
+                    <span class="kpi-vs down">↓ 0 vs mes anterior</span>
+                </div>
+                <div class="kpi-card">
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle kpi-icon"></i><span class="kpi-label">Beneficio actual</span></div>
+                    <p class="kpi-value">€${totalPaid}</p>
+                    <span class="kpi-vs up">↑ 0 vs mes anterior</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="kpi-card">
+                    <div class="flex items-center gap-2"><i class="fas fa-file-contract kpi-icon"></i><span class="kpi-label">Contratos</span></div>
+                    <p class="kpi-value">${totalContracts}</p>
+                    <span class="text-xs text-yellow-600">🟡 ${expiringContracts} a punto caducar</span>
+                </div>
+                <div class="kpi-card">
+                    <div class="flex items-center gap-2"><i class="fas fa-chart-line kpi-icon"></i><span class="kpi-label">Ingresos vs Pdte</span></div>
+                    <p class="kpi-value text-sm">Ver gráfica</p>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h4 class="font-semibold text-gray-800 mb-2">📊 Ingresos vs Pendiente (últimos 6 meses)</h4>
+                <canvas id="incomeChart" height="180"></canvas>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800 mb-2">📋 Pagos caducados</h4>
+                ${overduePayments.length === 0 ? '<p class="text-sm text-gray-400">✅ No hay pagos caducados</p>' :
+                    overduePayments.map(p => `
+                        <div class="payment-card mb-2 flex justify-between items-center">
+                            <div><p class="font-medium text-gray-800">${p.tenant_name || 'Inquilino'}</p><p class="text-xs text-gray-500">${p.property_name || ''}</p></div>
+                            <button onclick="showToast('📢 Recordatorio enviado', 'success')" class="btn-sm btn-sm-warning"><i class="fas fa-bell mr-1"></i>Recordar</button>
+                        </div>
+                    `).join('')
+                }
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800 mb-2">✅ Pagos puntuales</h4>
+                ${paidPayments.length === 0 ? '<p class="text-sm text-gray-400">No hay pagos registrados</p>' :
+                    paidPayments.map(p => `
+                        <div class="payment-card mb-2 flex justify-between items-center">
+                            <div><p class="font-medium text-gray-800">${p.tenant_name || 'Inquilino'}</p><p class="text-xs text-gray-500">${p.property_name || ''}</p></div>
+                            <button onclick="viewPayment('${p.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-file-invoice mr-1"></i>Ver</button>
+                        </div>
+                    `).join('')
+                }
+            </div>
         `;
-        const filters = document.getElementById('contractFilters');
-        if (filters) filters.style.display = state.tenantSubcategory === 'contracts' ? 'flex' : 'none';
-        renderContracts();
-        showToast('👥 Inquilinos', 'info');
-    } else if (view === 'gastos') {
-        floatBtn.classList.add('hidden');
-        const propertyOptions = state.properties.map(p =>
-            `<option value="${p.id}">${p.title}</option>`
-        ).join('');
-        mainContent.innerHTML = `
-            <div class="bg-white rounded-2xl p-4 card-shadow">
-                <h3 class="font-semibold text-gray-800 mb-3">💰 REPARTIR GASTOS AUTOMÁTICOS</h3>
-                <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Vivienda</label>
-                    <select id="gastoProperty" class="login-input">
-                        <option value="">Seleccionar vivienda</option>
-                        ${propertyOptions}
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de gasto</label>
-                    <select id="gastoType" class="login-input">
-                        <option value="luz">Luz</option>
-                        <option value="agua">Agua</option>
-                        <option value="internet">Internet</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Mes</label><select id="gastoMonth" class="login-input"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Año</label><input type="number" id="gastoYear" class="login-input" placeholder="2024" value="${new Date().getFullYear()}" /></div>
-                </div>
-                <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Importe factura (€)</label><input type="number" id="gastoAmount" class="login-input" placeholder="150.00" step="0.01" /></div>
-                <button onclick="repartirGastos()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Repartir entre inquilinos</button>
-            </div>
-            <div class="bg-white rounded-2xl p-4 card-shadow">
-                <h3 class="font-semibold text-gray-800 mb-3">📋 Histórico de gastos</h3>
-                <div id="gastosList" class="space-y-2"></div>
-            </div>
-        `;
-        renderGastos();
-        showToast('💰 Gastos', 'info');
-    } else if (view === 'incidencias') {
-        floatBtn.classList.add('hidden');
-        mainContent.innerHTML = `
-            <div class="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
-                <span class="incidencia-filter active" data-filter="todas" onclick="filterIncidencias(this, 'todas')">Todas</span>
-                <span class="incidencia-filter" data-filter="pendiente" onclick="filterIncidencias(this, 'pendiente')">Abiertas</span>
-                <span class="incidencia-filter" data-filter="resuelta" onclick="filterIncidencias(this, 'resuelta')">Resueltas</span>
-            </div>
-            <div class="flex items-center gap-2 mb-3">
-                <div class="search-box flex-1">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="incidenciaSearch" placeholder="Buscar incidencia..." oninput="renderIncidencias()" />
-                </div>
-                <button onclick="openAddIncidencia()" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition whitespace-nowrap">
-                    <i class="fas fa-plus mr-1"></i>Nueva
-                </button>
-            </div>
-            <div id="incidenciasList" class="space-y-3"></div>
-        `;
-        actualizarSelectoresIncidencias();
-        renderIncidencias();
-        showToast('⚠️ Incidencias', 'info');
-    } else {
-        floatBtn.classList.add('hidden');
+
+        setTimeout(() => {
+            const ctx = document.getElementById('incomeChart');
+            if (ctx) {
+                if (chartInstance) chartInstance.destroy();
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: CHART_DATA.labels,
+                        datasets: [
+                            { label: 'Ingresos (€)', data: CHART_DATA.ingresos, backgroundColor: '#4f46e5', borderRadius: 6 },
+                            { label: 'Pendiente (€)', data: CHART_DATA.pendiente, backgroundColor: '#ef4444', borderRadius: 6 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } },
+                        scales: { y: { beginAtZero: true, grid: { color: '#e2e8f0' } }, x: { grid: { display: false } } }
+                    }
+                });
+            }
+        }, 100);
+    }
+
+    function updateResumenDashboard() {
+        const month = document.getElementById('monthSelector').value;
+        state.selectedMonth = month;
         renderResumen();
     }
-}
 
-// ============================================
-// RENDER RESUMEN
-// ============================================
-function renderResumen() {
-    const mainContent = document.getElementById('mainContent');
-    const name = state.currentUser ? state.currentUser.name : 'Propietario';
-    const totalProperties = state.properties.length;
-    const totalTenants = state.role === 'owner' ? state.tenants.length : 0;
-    const totalContracts = state.contracts.length;
-    const expiringContracts = state.contracts.filter(c => c.status === 'expiring').length;
-    const overduePayments = state.payments.filter(p => p.status === 'overdue');
-    const paidPayments = state.payments.filter(p => p.status === 'paid');
-    const totalPaid = paidPayments.reduce((s, p) => s + p.amount, 0);
-
-    mainContent.innerHTML = `
-        <div class="flex items-center gap-3">
-            <span class="text-3xl">👋</span>
-            <div>
-                <p class="greeting-text">Hola, ${name}</p>
-                <p class="greeting-sub">Bienvenido de vuelta</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3">
-            <label class="text-sm font-medium text-gray-700">Selecciona Mes/Año:</label>
-            <input type="month" id="monthSelector" class="month-selector" value="${state.selectedMonth}" onchange="updateResumenDashboard()" />
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-            <div class="kpi-card">
-                <div class="flex items-center gap-2"><i class="fas fa-building kpi-icon"></i><span class="kpi-label">Viviendas</span></div>
-                <p class="kpi-value">${totalProperties}</p>
-                <span class="kpi-vs up">↑ 0 vs mes anterior</span>
-            </div>
-            <div class="kpi-card">
-                <div class="flex items-center gap-2"><i class="fas fa-users kpi-icon"></i><span class="kpi-label">Inquilinos</span></div>
-                <p class="kpi-value">${totalTenants}</p>
-                <span class="kpi-vs up">↑ 0 vs mes anterior</span>
-            </div>
-            <div class="kpi-card">
-                <div class="flex items-center gap-2"><i class="fas fa-clock kpi-icon"></i><span class="kpi-label">Pago pdte</span></div>
-                <p class="kpi-value">${overduePayments.length}</p>
-                <span class="kpi-vs down">↓ 0 vs mes anterior</span>
-            </div>
-            <div class="kpi-card">
-                <div class="flex items-center gap-2"><i class="fas fa-check-circle kpi-icon"></i><span class="kpi-label">Beneficio actual</span></div>
-                <p class="kpi-value">€${totalPaid}</p>
-                <span class="kpi-vs up">↑ 0 vs mes anterior</span>
-            </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-            <div class="kpi-card">
-                <div class="flex items-center gap-2"><i class="fas fa-file-contract kpi-icon"></i><span class="kpi-label">Contratos</span></div>
-                <p class="kpi-value">${totalContracts}</p>
-                <span class="text-xs text-yellow-600">🟡 ${expiringContracts} a punto caducar</span>
-            </div>
-            <div class="kpi-card">
-                <div class="flex items-center gap-2"><i class="fas fa-chart-line kpi-icon"></i><span class="kpi-label">Ingresos vs Pdte</span></div>
-                <p class="kpi-value text-sm">Ver gráfica</p>
-            </div>
-        </div>
-        <div class="chart-container">
-            <h4 class="font-semibold text-gray-800 mb-2">📊 Ingresos vs Pendiente (últimos 6 meses)</h4>
-            <canvas id="incomeChart" height="180"></canvas>
-        </div>
-        <div>
-            <h4 class="font-semibold text-gray-800 mb-2">📋 Pagos caducados</h4>
-            ${overduePayments.length === 0 ? '<p class="text-sm text-gray-400">✅ No hay pagos caducados</p>' :
-                overduePayments.map(p => `
-                    <div class="payment-card mb-2 flex justify-between items-center">
-                        <div><p class="font-medium text-gray-800">${p.tenant_name || 'Inquilino'}</p><p class="text-xs text-gray-500">${p.property_name || ''}</p></div>
-                        <button onclick="showToast('📢 Recordatorio enviado', 'success')" class="btn-sm btn-sm-warning"><i class="fas fa-bell mr-1"></i>Recordar</button>
-                    </div>
-                `).join('')
-            }
-        </div>
-        <div>
-            <h4 class="font-semibold text-gray-800 mb-2">✅ Pagos puntuales</h4>
-            ${paidPayments.length === 0 ? '<p class="text-sm text-gray-400">No hay pagos registrados</p>' :
-                paidPayments.map(p => `
-                    <div class="payment-card mb-2 flex justify-between items-center">
-                        <div><p class="font-medium text-gray-800">${p.tenant_name || 'Inquilino'}</p><p class="text-xs text-gray-500">${p.property_name || ''}</p></div>
-                        <button onclick="viewPayment('${p.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-file-invoice mr-1"></i>Ver</button>
-                    </div>
-                `).join('')
-            }
-        </div>
-    `;
-
-    setTimeout(() => {
-        const ctx = document.getElementById('incomeChart');
-        if (ctx) {
-            if (chartInstance) chartInstance.destroy();
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: CHART_DATA.labels,
-                    datasets: [
-                        { label: 'Ingresos (€)', data: CHART_DATA.ingresos, backgroundColor: '#4f46e5', borderRadius: 6 },
-                        { label: 'Pendiente (€)', data: CHART_DATA.pendiente, backgroundColor: '#ef4444', borderRadius: 6 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } },
-                    scales: { y: { beginAtZero: true, grid: { color: '#e2e8f0' } }, x: { grid: { display: false } } }
-                }
-            });
+    // ============================================
+    // GASTOS
+    // ============================================
+    async function repartirGastos() {
+        const propertyId = document.getElementById('gastoProperty').value;
+        if (!propertyId) { showToast('❌ Selecciona una vivienda', 'error'); return; }
+        
+        const { data: rooms } = await supabaseClient
+            .from('rooms')
+            .select('tenant_id')
+            .eq('property_id', propertyId)
+            .not('tenant_id', 'is', null);
+            
+        const tenantIds = rooms.map(r => r.tenant_id);
+        if (tenantIds.length === 0) { showToast('❌ No hay inquilinos en esta vivienda', 'error'); return; }
+        
+        const type = document.getElementById('gastoType').value;
+        const month = parseInt(document.getElementById('gastoMonth').value);
+        const year = parseInt(document.getElementById('gastoYear').value);
+        const amount = parseFloat(document.getElementById('gastoAmount').value);
+        
+        if (!amount || amount <= 0) { showToast('❌ Introduce un importe válido', 'error'); return; }
+        
+        const perPerson = amount / tenantIds.length;
+        
+        const { error } = await supabaseClient
+            .from('expenses')
+            .insert([{
+                property_id: propertyId,
+                type: type,
+                month: month,
+                year: year,
+                amount: amount,
+                per_person: perPerson,
+                tenant_ids: tenantIds.join(',')
+            }]);
+            
+        if (error) {
+            showToast('❌ Error al repartir gastos', 'error');
+            return;
         }
-    }, 100);
-}
-
-function updateResumenDashboard() {
-    const month = document.getElementById('monthSelector').value;
-    state.selectedMonth = month;
-    renderResumen();
-}
-
-// ============================================
-// GASTOS
-// ============================================
-async function repartirGastos() {
-    const propertyId = document.getElementById('gastoProperty').value;
-    if (!propertyId) { showToast('❌ Selecciona una vivienda', 'error'); return; }
-    
-    const { data: rooms } = await supabase
-        .from('rooms')
-        .select('tenant_id')
-        .eq('property_id', propertyId)
-        .not('tenant_id', 'is', null);
         
-    const tenantIds = rooms.map(r => r.tenant_id);
-    if (tenantIds.length === 0) { showToast('❌ No hay inquilinos en esta vivienda', 'error'); return; }
-    
-    const type = document.getElementById('gastoType').value;
-    const month = parseInt(document.getElementById('gastoMonth').value);
-    const year = parseInt(document.getElementById('gastoYear').value);
-    const amount = parseFloat(document.getElementById('gastoAmount').value);
-    
-    if (!amount || amount <= 0) { showToast('❌ Introduce un importe válido', 'error'); return; }
-    
-    const perPerson = amount / tenantIds.length;
-    
-    const { error } = await supabase
-        .from('expenses')
-        .insert([{
-            property_id: propertyId,
-            type: type,
-            month: month,
-            year: year,
-            amount: amount,
-            per_person: perPerson,
-            tenant_ids: tenantIds.join(',')
-        }]);
-        
-    if (error) {
-        showToast('❌ Error al repartir gastos', 'error');
-        return;
-    }
-    
-    await loadInitialData();
-    renderGastos();
-    showToast(`✅ Gasto repartido: €${perPerson.toFixed(2)} por persona`, 'success');
-    document.getElementById('gastoAmount').value = '';
-}
-
-function renderGastos() {
-    const container = document.getElementById('gastosList');
-    if (!container) return;
-
-    if (state.expenses.length === 0) {
-        container.innerHTML = '<p class="text-sm text-gray-400">No hay gastos registrados</p>';
-        return;
+        await loadInitialData();
+        renderGastos();
+        showToast(`✅ Gasto repartido: €${perPerson.toFixed(2)} por persona`, 'success');
+        document.getElementById('gastoAmount').value = '';
     }
 
-    const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
+    function renderGastos() {
+        const container = document.getElementById('gastosList');
+        if (!container) return;
 
-    container.innerHTML = state.expenses.slice().reverse().map(g => `
-        <div class="gasto-card">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-medium text-gray-800">${g.property_name || 'Propiedad'}</p>
-                    <p class="text-sm text-gray-500">${typeLabels[g.type] || g.type} · ${g.month}/${g.year}</p>
-                    <p class="text-xs text-gray-400">Total: €${g.amount.toFixed(2)} · €${g.per_person.toFixed(2)}/persona</p>
-                </div>
-                <button onclick="verDetalleGasto('${g.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function verDetalleGasto(gastoId) {
-    const gasto = state.expenses.find(g => g.id === gastoId);
-    if (!gasto) return;
-    const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
-    document.getElementById('paymentContent').innerHTML = `
-        <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-            <p><strong>Vivienda:</strong> ${gasto.property_name || 'N/A'}</p>
-            <p><strong>Tipo:</strong> ${typeLabels[gasto.type] || gasto.type}</p>
-            <p><strong>Fecha:</strong> ${gasto.month}/${gasto.year}</p>
-            <p><strong>Importe total:</strong> €${gasto.amount.toFixed(2)}</p>
-            <p><strong>Por persona:</strong> €${gasto.per_person.toFixed(2)}</p>
-        </div>
-    `;
-    document.getElementById('paymentModal').classList.add('active');
-}
-
-function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
-
-function viewPayment(paymentId) {
-    const payment = state.payments.find(p => p.id === paymentId);
-    if (!payment) return;
-    document.getElementById('paymentContent').innerHTML = `
-        <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-            <p><strong>Inquilino:</strong> ${payment.tenant_name || 'N/A'}</p>
-            <p><strong>Vivienda:</strong> ${payment.property_name || 'N/A'}</p>
-            <p><strong>Importe:</strong> €${payment.amount}</p>
-            <p><strong>Fecha:</strong> ${payment.month}/${payment.year}</p>
-            <p><strong>Estado:</strong> ${payment.status === 'paid' ? '✅ Pagado' : '⚠️ Pendiente'}</p>
-        </div>
-    `;
-    document.getElementById('paymentModal').classList.add('active');
-}
-
-// ============================================
-// INCIDENCIAS
-// ============================================
-function openAddIncidencia() {
-    actualizarSelectoresIncidencias();
-    document.getElementById('incidenciaModalTitle').textContent = 'Nueva Incidencia';
-    document.getElementById('incidenciaForm').reset();
-    document.getElementById('incidenciaModal').classList.add('active');
-}
-
-function closeIncidenciaModal() { document.getElementById('incidenciaModal').classList.remove('active'); }
-
-async function saveIncidencia(e) {
-    e.preventDefault();
-    
-    const propertyId = document.getElementById('incidenciaProperty').value;
-    const tenantId = document.getElementById('incidenciaTenant').value;
-    
-    const newIncidencia = {
-        title: document.getElementById('incidenciaTitle').value.trim(),
-        property_id: propertyId || null,
-        tenant_id: tenantId || null,
-        description: document.getElementById('incidenciaDesc').value.trim(),
-        priority: document.getElementById('incidenciaPriority').value,
-        status: 'pendiente'
-    };
-    
-    const { data, error } = await supabase
-        .from('incidents')
-        .insert([newIncidencia])
-        .select();
-        
-    if (error) {
-        showToast('❌ Error al crear incidencia', 'error');
-        return;
-    }
-    
-    state.incidents.push(data[0]);
-    closeIncidenciaModal();
-    renderIncidencias();
-    showToast('✅ Incidencia creada correctamente', 'success');
-}
-
-function actualizarSelectoresIncidencias() {
-    const propertySelect = document.getElementById('incidenciaProperty');
-    const tenantSelect = document.getElementById('incidenciaTenant');
-    
-    if (propertySelect) {
-        propertySelect.innerHTML = `<option value="">Seleccionar</option>` +
-            state.properties.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
-    }
-    
-    if (tenantSelect && state.role === 'owner') {
-        tenantSelect.innerHTML = `<option value="">Seleccionar</option>` +
-            state.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    } else if (tenantSelect && state.role === 'tenant') {
-        tenantSelect.innerHTML = `<option value="${state.currentUser.id}">${state.currentUser.name}</option>`;
-        tenantSelect.disabled = true;
-    }
-}
-
-function filterIncidencias(el, filter) {
-    document.querySelectorAll('.incidencia-filter').forEach(item => {
-        item.classList.remove('active');
-    });
-    el.classList.add('active');
-    state.incidenciaFilter = filter;
-    renderIncidencias();
-}
-
-function renderIncidencias() {
-    const container = document.getElementById('incidenciasList');
-    if (!container) return;
-
-    const searchTerm = document.getElementById('incidenciaSearch')?.value?.toLowerCase() || '';
-    const filter = state.incidenciaFilter || 'todas';
-
-    let filtered = state.incidents;
-    if (filter !== 'todas') {
-        filtered = filtered.filter(i => i.status === filter);
-    }
-    if (searchTerm) {
-        filtered = filtered.filter(i => i.title.toLowerCase().includes(searchTerm) || i.description.toLowerCase().includes(searchTerm));
-    }
-
-    if (filtered.length === 0) {
-        container.innerHTML =
-            '<div class="text-center py-8 text-gray-400"><i class="fas fa-check-circle text-3xl mb-2 block"></i><p>No hay incidencias</p></div>';
-        return;
-    }
-
-    const priorityLabels = { 'baja': '🟢 Baja', 'media': '🟡 Media', 'alta': '🔴 Alta' };
-
-    container.innerHTML = filtered.map(i => `
-        <div class="incidencia-card">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h4 class="font-semibold text-gray-800">${i.title}</h4>
-                    <p class="text-sm text-gray-500">${i.description}</p>
-                    <div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
-                        <span>📅 ${new Date(i.created_at).toLocaleDateString()}</span>
-                        ${i.tenant_name ? `<span>👤 ${i.tenant_name}</span>` : ''}
-                        ${i.property_name ? `<span>🏠 ${i.property_name}</span>` : ''}
-                        ${i.status === 'pendiente' ? `<span class="text-red-500">⏳ Pendiente</span>` : `<span class="text-green-500">✅ Resuelta</span>`}
-                    </div>
-                </div>
-                <span class="status-incidencia ${i.status === 'pendiente' ? 'status-pendiente' : 'status-resuelta'}">${i.status === 'pendiente' ? 'Abierta' : 'Resuelta'}</span>
-            </div>
-            <div class="flex gap-2 mt-2 flex-wrap">
-                <span class="text-xs font-medium">${priorityLabels[i.priority] || i.priority}</span>
-                ${i.status === 'pendiente' ? `
-                    <button onclick="abrirResolver('${i.id}')" class="btn-sm btn-sm-success"><i class="fas fa-check mr-1"></i>Resolver</button>
-                ` : ''}
-                ${i.resolution ? `<button onclick="verResolucion('${i.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver resolución</button>` : ''}
-                <button onclick="eliminarIncidencia('${i.id}')" class="btn-sm btn-sm-danger"><i class="fas fa-trash mr-1"></i>Eliminar</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function abrirResolver(id) {
-    document.getElementById('resolverIncidenciaId').value = id;
-    document.getElementById('resolverForm').reset();
-    document.getElementById('resolverModal').classList.add('active');
-}
-
-function closeResolverModal() { document.getElementById('resolverModal').classList.remove('active'); }
-
-async function saveResolver(e) {
-    e.preventDefault();
-    const id = document.getElementById('resolverIncidenciaId').value;
-    
-    const { error } = await supabase
-        .from('incidents')
-        .update({
-            status: 'resuelta',
-            resolution: document.getElementById('resolverDesc').value.trim(),
-            resolved_date: new Date().toISOString()
-        })
-        .eq('id', id);
-        
-    if (error) {
-        showToast('❌ Error al resolver incidencia', 'error');
-        return;
-    }
-    
-    state.incidents = state.incidents.map(i => 
-        i.id === id ? { ...i, status: 'resuelta', resolution: document.getElementById('resolverDesc').value.trim(), resolved_date: new Date().toISOString() } : i
-    );
-    
-    closeResolverModal();
-    renderIncidencias();
-    showToast('✅ Incidencia resuelta correctamente', 'success');
-}
-
-function verResolucion(id) {
-    const incidencia = state.incidents.find(i => i.id === id);
-    if (!incidencia) return;
-    document.getElementById('incidenciaModalTitle').textContent = 'Resolución de Incidencia';
-    document.getElementById('incidenciaContent').innerHTML = `
-        <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-            <p><strong>Incidencia:</strong> ${incidencia.title}</p>
-            <p><strong>Fecha resolución:</strong> ${new Date(incidencia.resolved_date).toLocaleDateString()}</p>
-            <p><strong>Solución:</strong> ${incidencia.resolution}</p>
-        </div>
-    `;
-    document.getElementById('incidenciaModal').classList.add('active');
-}
-
-async function eliminarIncidencia(id) {
-    if (!confirm('¿Eliminar esta incidencia?')) return;
-    
-    const { error } = await supabase
-        .from('incidents')
-        .delete()
-        .eq('id', id);
-        
-    if (error) {
-        showToast('❌ Error al eliminar incidencia', 'error');
-        return;
-    }
-    
-    state.incidents = state.incidents.filter(i => i.id !== id);
-    renderIncidencias();
-    showToast('🗑️ Incidencia eliminada', 'info');
-}
-
-// ============================================
-// FILTROS
-// ============================================
-function openFilterModal() {
-    document.getElementById('filterProvince').value = state.filters.province || 'all';
-    document.getElementById('filterCity').value = state.filters.city || 'all';
-    document.getElementById('filterMinPrice').value = state.filters.minPrice || 0;
-    document.getElementById('filterMaxPrice').value = state.filters.maxPrice || 1000000;
-    document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(el => {
-        el.classList.remove('selected');
-        if (el.dataset.beds === state.filters.beds) el.classList.add('selected');
-    });
-    document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(el => {
-        el.classList.remove('selected');
-        if (el.dataset.status === state.filters.status) el.classList.add('selected');
-    });
-    document.querySelectorAll('#filterModal .service-check').forEach(el => {
-        el.classList.remove('selected');
-        const val = el.querySelector('input').value;
-        if (state.filters.services.includes(val)) el.classList.add('selected');
-    });
-    const mid = (state.filters.minPrice + state.filters.maxPrice) / 2;
-    document.getElementById('priceRange').value = mid || 500000;
-    document.getElementById('rangeValue').textContent = '€' + (mid || 500000).toLocaleString();
-    document.getElementById('filterModal').classList.add('active');
-}
-
-function closeFilterModal() { document.getElementById('filterModal').classList.remove('active'); }
-
-function updatePriceRange(value) {
-    const val = parseInt(value);
-    document.getElementById('rangeValue').textContent = '€' + val.toLocaleString();
-    const min = Math.max(0, val - 250000);
-    const max = val + 250000;
-    document.getElementById('filterMinPrice').value = min;
-    document.getElementById('filterMaxPrice').value = max;
-    state.filters.minPrice = min;
-    state.filters.maxPrice = max;
-    applyFilters();
-}
-
-function selectBeds(el, beds) {
-    document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    state.filters.beds = beds;
-    applyFilters();
-}
-
-function selectStatusFilter(el, status) {
-    document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(b => b.classList.remove('selected'));
-    el.classList.add('selected');
-    state.filters.status = status;
-    applyFilters();
-}
-
-function toggleService(el) {
-    el.classList.toggle('selected');
-    const checkbox = el.querySelector('input');
-    const value = checkbox.value;
-    const idx = state.filters.services.indexOf(value);
-    if (idx > -1) state.filters.services.splice(idx, 1);
-    else state.filters.services.push(value);
-    applyFilters();
-}
-
-function toggleServiceAdd(el) { el.classList.toggle('selected'); }
-
-function applyFilters() {
-    state.filters.province = document.getElementById('filterProvince').value;
-    state.filters.city = document.getElementById('filterCity').value;
-    state.filters.minPrice = parseInt(document.getElementById('filterMinPrice').value) || 0;
-    state.filters.maxPrice = parseInt(document.getElementById('filterMaxPrice').value) || 1000000;
-    let count = 0;
-    if (state.filters.province !== 'all') count++;
-    if (state.filters.city !== 'all') count++;
-    if (state.filters.beds !== 'all') count++;
-    if (state.filters.status !== 'all') count++;
-    count += state.filters.services.length;
-    const badge = document.getElementById('filterBadge');
-    if (count > 0) { badge.textContent = count;
-        badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
-    renderProperties();
-}
-
-function applyFiltersAndClose() { applyFilters();
-    closeFilterModal();
-    showToast('✅ Filtros aplicados', 'success'); }
-
-// ============================================
-// RENDERIZAR PROPIEDADES
-// ============================================
-let currentCategory = 'all';
-
-function filterByCategory(el, category) {
-    document.querySelectorAll('.category-item').forEach(item => {
-        item.classList.remove('active');
-        item.classList.add('inactive');
-    });
-    el.classList.remove('inactive');
-    el.classList.add('active');
-    currentCategory = category;
-    renderProperties();
-}
-
-function filterProperties() {
-    state.searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    renderProperties();
-}
-
-function renderProperties() {
-    const container = document.getElementById('propertyList');
-    if (!container) return;
-
-    const searchTerm = document.getElementById('searchInput')?.value?.toLowerCase() || '';
-    const filters = state.filters;
-    const category = currentCategory;
-
-    let filtered = state.properties;
-
-    if (category !== 'all') filtered = filtered.filter(p => p.category === category);
-
-    if (searchTerm) {
-        filtered = filtered.filter(p =>
-            p.title.toLowerCase().includes(searchTerm) ||
-            p.address.toLowerCase().includes(searchTerm) ||
-            p.city.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    if (filters.province !== 'all') filtered = filtered.filter(p => p.province === filters.province);
-    if (filters.city !== 'all') filtered = filtered.filter(p => p.city === filters.city);
-    if (filters.minPrice > 0 || filters.maxPrice < 1000000) {
-        filtered = filtered.filter(p => { const price = p.price || 0; return price >= filters.minPrice && price <= filters.maxPrice; });
-    }
-    if (filters.beds !== 'all') {
-        const beds = parseInt(filters.beds);
-        if (beds === 4) filtered = filtered.filter(p => p.beds >= 4);
-        else filtered = filtered.filter(p => p.beds === beds);
-    }
-    if (filters.services.length > 0) {
-        filtered = filtered.filter(p => filters.services.every(s => p.services && p.services.includes(s)));
-    }
-
-    const countEl = document.getElementById('propertyCount');
-    if (countEl) countEl.textContent = filtered.length;
-
-    if (filtered.length === 0) {
-        container.innerHTML =
-            `<div class="text-center py-12 text-gray-400"><i class="fas fa-home text-4xl mb-3 block"></i><p>No hay viviendas que coincidan con tu búsqueda</p></div>`;
-        return;
-    }
-
-    const isOwner = state.role === 'owner';
-
-    container.innerHTML = filtered.map(p => {
-        const rentalLabels = { 'complete': 'Completo', 'rooms': 'Por habitaciones' };
-        const catLabels = { 'villa': 'Villa', 'house': 'Casa', 'apartment': 'Apartamento', 'bungalow': 'Bungalow' };
-        const monthlyPrice = p.price > 0 ? Math.round(p.price / (p.beds || 1)) : 0;
-
-        return `
-            <div class="property-card bg-white rounded-2xl overflow-hidden card-shadow card-shadow-hover border border-gray-100/60 fade-enter">
-                <div class="relative">
-                    <img src="${p.image || 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=400&fit=crop'}" alt="${p.title}" class="property-img" loading="lazy" />
-                    ${isOwner ? `<button onclick="openManageModal('${p.id}')" class="absolute bottom-3 right-3 btn-gestionar"><i class="fas fa-cog mr-1"></i>Gestionar</button>` : ''}
-                </div>
-                <div class="p-4">
-                    <div class="flex justify-between items-start">
-                        <div><h3 class="text-lg font-semibold text-gray-800">${p.title}</h3><p class="text-sm text-gray-500">${p.address}, ${p.city}</p></div>
-                        <span class="text-lg font-bold text-gray-800">${monthlyPrice > 0 ? '€' + monthlyPrice.toLocaleString() + '/Mes' : 'Precio a consultar'}</span>
-                    </div>
-                    <div class="flex items-center gap-2 mt-2 flex-wrap">
-                        <span class="rental-type">${rentalLabels[p.rental_type] || 'Completo'}</span>
-                        <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full">${catLabels[p.category] || p.category}</span>
-                    </div>
-                    <div class="flex items-center gap-3 mt-2 text-sm text-gray-500 flex-wrap">
-                        <span><i class="fas fa-bed mr-1"></i> ${p.beds} Hab.</span>
-                        <span><i class="fas fa-bath mr-1"></i> ${p.baths} Baños</span>
-                        <span><i class="fas fa-vector-square mr-1"></i> ${p.sqm} m²</span>
-                    </div>
-                    ${p.services && p.services.length > 0 ? `
-                        <div class="mt-2 flex gap-2 flex-wrap">
-                            ${p.services.split(',').map(s => {
-                                const icons = { 'wifi': 'fa-wifi', 'piscina': 'fa-swimmer', 'garaje': 'fa-car' };
-                                return `<span class="text-xs text-gray-500"><i class="fas ${icons[s.trim()] || 'fa-check'} mr-1"></i>${s.trim().charAt(0).toUpperCase() + s.trim().slice(1)}</span>`;
-                            }).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ============================================
-// RENDERIZAR INQUILINOS / CONTRATOS
-// ============================================
-function renderContracts() {
-    const container = document.getElementById('contractContainer');
-    if (!container) return;
-
-    const subcategory = state.tenantSubcategory || 'tenants';
-
-    if (subcategory === 'tenants') {
-        if (state.tenants.length === 0) {
-            container.innerHTML =
-                `<div class="text-center py-8 text-gray-400"><i class="fas fa-users text-3xl mb-2 block"></i><p>No hay inquilinos registrados.</p></div>`;
+        if (state.expenses.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-400">No hay gastos registrados</p>';
             return;
         }
 
-        container.innerHTML = state.tenants.map(t => `
-            <div class="tenant-card">
+        const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
+
+        container.innerHTML = state.expenses.slice().reverse().map(g => `
+            <div class="gasto-card">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h4 class="font-semibold text-gray-800">${t.name}</h4>
-                        <p class="text-sm text-gray-500">${t.email}</p>
+                        <p class="font-medium text-gray-800">${g.property_name || 'Propiedad'}</p>
+                        <p class="text-sm text-gray-500">${typeLabels[g.type] || g.type} · ${g.month}/${g.year}</p>
+                        <p class="text-xs text-gray-400">Total: €${g.amount.toFixed(2)} · €${g.per_person.toFixed(2)}/persona</p>
                     </div>
-                    <button onclick="openEditTenantModal('${t.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-edit mr-1"></i>Modificar</button>
-                </div>
-                <div class="mt-2 grid grid-cols-2 gap-1 text-sm">
-                    <span class="text-gray-500"><strong>DNI:</strong> ${t.dni || 'No especificado'}</span>
-                    <span class="text-gray-500"><strong>Teléfono:</strong> ${t.phone || 'No especificado'}</span>
+                    <button onclick="verDetalleGasto('${g.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver</button>
                 </div>
             </div>
         `).join('');
-    } else {
-        let filtered = state.contracts;
-        const filter = state.contractFilter || 'all';
-        if (filter !== 'all') filtered = filtered.filter(c => c.status === filter);
-        const searchTerm = document.getElementById('contractSearch')?.value?.toLowerCase() || '';
+    }
+
+    function verDetalleGasto(gastoId) {
+        const gasto = state.expenses.find(g => g.id === gastoId);
+        if (!gasto) return;
+        const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
+        document.getElementById('paymentContent').innerHTML = `
+            <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                <p><strong>Vivienda:</strong> ${gasto.property_name || 'N/A'}</p>
+                <p><strong>Tipo:</strong> ${typeLabels[gasto.type] || gasto.type}</p>
+                <p><strong>Fecha:</strong> ${gasto.month}/${gasto.year}</p>
+                <p><strong>Importe total:</strong> €${gasto.amount.toFixed(2)}</p>
+                <p><strong>Por persona:</strong> €${gasto.per_person.toFixed(2)}</p>
+            </div>
+        `;
+        document.getElementById('paymentModal').classList.add('active');
+    }
+
+    function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
+
+    function viewPayment(paymentId) {
+        const payment = state.payments.find(p => p.id === paymentId);
+        if (!payment) return;
+        document.getElementById('paymentContent').innerHTML = `
+            <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                <p><strong>Inquilino:</strong> ${payment.tenant_name || 'N/A'}</p>
+                <p><strong>Vivienda:</strong> ${payment.property_name || 'N/A'}</p>
+                <p><strong>Importe:</strong> €${payment.amount}</p>
+                <p><strong>Fecha:</strong> ${payment.month}/${payment.year}</p>
+                <p><strong>Estado:</strong> ${payment.status === 'paid' ? '✅ Pagado' : '⚠️ Pendiente'}</p>
+            </div>
+        `;
+        document.getElementById('paymentModal').classList.add('active');
+    }
+
+    // ============================================
+    // INCIDENCIAS
+    // ============================================
+    function openAddIncidencia() {
+        actualizarSelectoresIncidencias();
+        document.getElementById('incidenciaModalTitle').textContent = 'Nueva Incidencia';
+        document.getElementById('incidenciaForm').reset();
+        document.getElementById('incidenciaModal').classList.add('active');
+    }
+
+    function closeIncidenciaModal() { document.getElementById('incidenciaModal').classList.remove('active'); }
+
+    async function saveIncidencia(e) {
+        e.preventDefault();
+        
+        const propertyId = document.getElementById('incidenciaProperty').value;
+        const tenantId = document.getElementById('incidenciaTenant').value;
+        
+        const newIncidencia = {
+            title: document.getElementById('incidenciaTitle').value.trim(),
+            property_id: propertyId || null,
+            tenant_id: tenantId || null,
+            description: document.getElementById('incidenciaDesc').value.trim(),
+            priority: document.getElementById('incidenciaPriority').value,
+            status: 'pendiente'
+        };
+        
+        const { data, error } = await supabaseClient
+            .from('incidents')
+            .insert([newIncidencia])
+            .select();
+            
+        if (error) {
+            showToast('❌ Error al crear incidencia', 'error');
+            return;
+        }
+        
+        state.incidents.push(data[0]);
+        closeIncidenciaModal();
+        renderIncidencias();
+        showToast('✅ Incidencia creada correctamente', 'success');
+    }
+
+    function actualizarSelectoresIncidencias() {
+        const propertySelect = document.getElementById('incidenciaProperty');
+        const tenantSelect = document.getElementById('incidenciaTenant');
+        
+        if (propertySelect) {
+            propertySelect.innerHTML = `<option value="">Seleccionar</option>` +
+                state.properties.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+        }
+        
+        if (tenantSelect && state.role === 'owner') {
+            tenantSelect.innerHTML = `<option value="">Seleccionar</option>` +
+                state.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        } else if (tenantSelect && state.role === 'tenant') {
+            tenantSelect.innerHTML = `<option value="${state.currentUser.id}">${state.currentUser.name}</option>`;
+            tenantSelect.disabled = true;
+        }
+    }
+
+    function filterIncidencias(el, filter) {
+        document.querySelectorAll('.incidencia-filter').forEach(item => {
+            item.classList.remove('active');
+        });
+        el.classList.add('active');
+        state.incidenciaFilter = filter;
+        renderIncidencias();
+    }
+
+    function renderIncidencias() {
+        const container = document.getElementById('incidenciasList');
+        if (!container) return;
+
+        const searchTerm = document.getElementById('incidenciaSearch')?.value?.toLowerCase() || '';
+        const filter = state.incidenciaFilter || 'todas';
+
+        let filtered = state.incidents;
+        if (filter !== 'todas') {
+            filtered = filtered.filter(i => i.status === filter);
+        }
         if (searchTerm) {
-            filtered = filtered.filter(c =>
-                c.tenant_name?.toLowerCase().includes(searchTerm) ||
-                c.address?.toLowerCase().includes(searchTerm)
-            );
+            filtered = filtered.filter(i => i.title.toLowerCase().includes(searchTerm) || i.description.toLowerCase().includes(searchTerm));
         }
 
         if (filtered.length === 0) {
             container.innerHTML =
-                `<div class="text-center py-8 text-gray-400"><i class="fas fa-file-contract text-3xl mb-2 block"></i><p>No hay contratos.</p></div>`;
+                '<div class="text-center py-8 text-gray-400"><i class="fas fa-check-circle text-3xl mb-2 block"></i><p>No hay incidencias</p></div>';
             return;
         }
 
-        container.innerHTML = filtered.map(c => {
-            const statusLabels = { 'active': 'Activo', 'expiring': 'A punto de caducar',
-                'expired': 'Vencido', 'rejected': 'Desestimado' };
-            const statusClasses = { 'active': 'status-active', 'expiring': 'status-expiring',
-                'expired': 'status-expired', 'rejected': 'status-rejected' };
-            const isRejected = c.status === 'rejected';
+        const priorityLabels = { 'baja': '🟢 Baja', 'media': '🟡 Media', 'alta': '🔴 Alta' };
+
+        container.innerHTML = filtered.map(i => `
+            <div class="incidencia-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-gray-800">${i.title}</h4>
+                        <p class="text-sm text-gray-500">${i.description}</p>
+                        <div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
+                            <span>📅 ${new Date(i.created_at).toLocaleDateString()}</span>
+                            ${i.tenant_name ? `<span>👤 ${i.tenant_name}</span>` : ''}
+                            ${i.property_name ? `<span>🏠 ${i.property_name}</span>` : ''}
+                            ${i.status === 'pendiente' ? `<span class="text-red-500">⏳ Pendiente</span>` : `<span class="text-green-500">✅ Resuelta</span>`}
+                        </div>
+                    </div>
+                    <span class="status-incidencia ${i.status === 'pendiente' ? 'status-pendiente' : 'status-resuelta'}">${i.status === 'pendiente' ? 'Abierta' : 'Resuelta'}</span>
+                </div>
+                <div class="flex gap-2 mt-2 flex-wrap">
+                    <span class="text-xs font-medium">${priorityLabels[i.priority] || i.priority}</span>
+                    ${i.status === 'pendiente' ? `
+                        <button onclick="abrirResolver('${i.id}')" class="btn-sm btn-sm-success"><i class="fas fa-check mr-1"></i>Resolver</button>
+                    ` : ''}
+                    ${i.resolution ? `<button onclick="verResolucion('${i.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver resolución</button>` : ''}
+                    <button onclick="eliminarIncidencia('${i.id}')" class="btn-sm btn-sm-danger"><i class="fas fa-trash mr-1"></i>Eliminar</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function abrirResolver(id) {
+        document.getElementById('resolverIncidenciaId').value = id;
+        document.getElementById('resolverForm').reset();
+        document.getElementById('resolverModal').classList.add('active');
+    }
+
+    function closeResolverModal() { document.getElementById('resolverModal').classList.remove('active'); }
+
+    async function saveResolver(e) {
+        e.preventDefault();
+        const id = document.getElementById('resolverIncidenciaId').value;
+        
+        const { error } = await supabaseClient
+            .from('incidents')
+            .update({
+                status: 'resuelta',
+                resolution: document.getElementById('resolverDesc').value.trim(),
+                resolved_date: new Date().toISOString()
+            })
+            .eq('id', id);
+            
+        if (error) {
+            showToast('❌ Error al resolver incidencia', 'error');
+            return;
+        }
+        
+        state.incidents = state.incidents.map(i => 
+            i.id === id ? { ...i, status: 'resuelta', resolution: document.getElementById('resolverDesc').value.trim(), resolved_date: new Date().toISOString() } : i
+        );
+        
+        closeResolverModal();
+        renderIncidencias();
+        showToast('✅ Incidencia resuelta correctamente', 'success');
+    }
+
+    function verResolucion(id) {
+        const incidencia = state.incidents.find(i => i.id === id);
+        if (!incidencia) return;
+        document.getElementById('incidenciaModalTitle').textContent = 'Resolución de Incidencia';
+        document.getElementById('incidenciaContent').innerHTML = `
+            <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                <p><strong>Incidencia:</strong> ${incidencia.title}</p>
+                <p><strong>Fecha resolución:</strong> ${new Date(incidencia.resolved_date).toLocaleDateString()}</p>
+                <p><strong>Solución:</strong> ${incidencia.resolution}</p>
+            </div>
+        `;
+        document.getElementById('incidenciaModal').classList.add('active');
+    }
+
+    async function eliminarIncidencia(id) {
+        if (!confirm('¿Eliminar esta incidencia?')) return;
+        
+        const { error } = await supabaseClient
+            .from('incidents')
+            .delete()
+            .eq('id', id);
+            
+        if (error) {
+            showToast('❌ Error al eliminar incidencia', 'error');
+            return;
+        }
+        
+        state.incidents = state.incidents.filter(i => i.id !== id);
+        renderIncidencias();
+        showToast('🗑️ Incidencia eliminada', 'info');
+    }
+
+    // ============================================
+    // FILTROS
+    // ============================================
+    function openFilterModal() {
+        document.getElementById('filterProvince').value = state.filters.province || 'all';
+        document.getElementById('filterCity').value = state.filters.city || 'all';
+        document.getElementById('filterMinPrice').value = state.filters.minPrice || 0;
+        document.getElementById('filterMaxPrice').value = state.filters.maxPrice || 1000000;
+        document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(el => {
+            el.classList.remove('selected');
+            if (el.dataset.beds === state.filters.beds) el.classList.add('selected');
+        });
+        document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(el => {
+            el.classList.remove('selected');
+            if (el.dataset.status === state.filters.status) el.classList.add('selected');
+        });
+        document.querySelectorAll('#filterModal .service-check').forEach(el => {
+            el.classList.remove('selected');
+            const val = el.querySelector('input').value;
+            if (state.filters.services.includes(val)) el.classList.add('selected');
+        });
+        const mid = (state.filters.minPrice + state.filters.maxPrice) / 2;
+        document.getElementById('priceRange').value = mid || 500000;
+        document.getElementById('rangeValue').textContent = '€' + (mid || 500000).toLocaleString();
+        document.getElementById('filterModal').classList.add('active');
+    }
+
+    function closeFilterModal() { document.getElementById('filterModal').classList.remove('active'); }
+
+    function updatePriceRange(value) {
+        const val = parseInt(value);
+        document.getElementById('rangeValue').textContent = '€' + val.toLocaleString();
+        const min = Math.max(0, val - 250000);
+        const max = val + 250000;
+        document.getElementById('filterMinPrice').value = min;
+        document.getElementById('filterMaxPrice').value = max;
+        state.filters.minPrice = min;
+        state.filters.maxPrice = max;
+        applyFilters();
+    }
+
+    function selectBeds(el, beds) {
+        document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        state.filters.beds = beds;
+        applyFilters();
+    }
+
+    function selectStatusFilter(el, status) {
+        document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        state.filters.status = status;
+        applyFilters();
+    }
+
+    function toggleService(el) {
+        el.classList.toggle('selected');
+        const checkbox = el.querySelector('input');
+        const value = checkbox.value;
+        const idx = state.filters.services.indexOf(value);
+        if (idx > -1) state.filters.services.splice(idx, 1);
+        else state.filters.services.push(value);
+        applyFilters();
+    }
+
+    function toggleServiceAdd(el) { el.classList.toggle('selected'); }
+
+    function applyFilters() {
+        state.filters.province = document.getElementById('filterProvince').value;
+        state.filters.city = document.getElementById('filterCity').value;
+        state.filters.minPrice = parseInt(document.getElementById('filterMinPrice').value) || 0;
+        state.filters.maxPrice = parseInt(document.getElementById('filterMaxPrice').value) || 1000000;
+        let count = 0;
+        if (state.filters.province !== 'all') count++;
+        if (state.filters.city !== 'all') count++;
+        if (state.filters.beds !== 'all') count++;
+        if (state.filters.status !== 'all') count++;
+        count += state.filters.services.length;
+        const badge = document.getElementById('filterBadge');
+        if (count > 0) { badge.textContent = count;
+            badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
+        renderProperties();
+    }
+
+    function applyFiltersAndClose() { applyFilters();
+        closeFilterModal();
+        showToast('✅ Filtros aplicados', 'success'); }
+
+    // ============================================
+    // RENDERIZAR PROPIEDADES
+    // ============================================
+    let currentCategory = 'all';
+
+    function filterByCategory(el, category) {
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.classList.remove('active');
+            item.classList.add('inactive');
+        });
+        el.classList.remove('inactive');
+        el.classList.add('active');
+        currentCategory = category;
+        renderProperties();
+    }
+
+    function filterProperties() {
+        state.searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        renderProperties();
+    }
+
+    function renderProperties() {
+        const container = document.getElementById('propertyList');
+        if (!container) return;
+
+        const searchTerm = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+        const filters = state.filters;
+        const category = currentCategory;
+
+        let filtered = state.properties;
+
+        if (category !== 'all') filtered = filtered.filter(p => p.category === category);
+
+        if (searchTerm) {
+            filtered = filtered.filter(p =>
+                p.title.toLowerCase().includes(searchTerm) ||
+                p.address.toLowerCase().includes(searchTerm) ||
+                p.city.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        if (filters.province !== 'all') filtered = filtered.filter(p => p.province === filters.province);
+        if (filters.city !== 'all') filtered = filtered.filter(p => p.city === filters.city);
+        if (filters.minPrice > 0 || filters.maxPrice < 1000000) {
+            filtered = filtered.filter(p => { const price = p.price || 0; return price >= filters.minPrice && price <= filters.maxPrice; });
+        }
+        if (filters.beds !== 'all') {
+            const beds = parseInt(filters.beds);
+            if (beds === 4) filtered = filtered.filter(p => p.beds >= 4);
+            else filtered = filtered.filter(p => p.beds === beds);
+        }
+        if (filters.services.length > 0) {
+            filtered = filtered.filter(p => filters.services.every(s => p.services && p.services.includes(s)));
+        }
+
+        const countEl = document.getElementById('propertyCount');
+        if (countEl) countEl.textContent = filtered.length;
+
+        if (filtered.length === 0) {
+            container.innerHTML =
+                `<div class="text-center py-12 text-gray-400"><i class="fas fa-home text-4xl mb-3 block"></i><p>No hay viviendas que coincidan con tu búsqueda</p></div>`;
+            return;
+        }
+
+        const isOwner = state.role === 'owner';
+
+        container.innerHTML = filtered.map(p => {
+            const rentalLabels = { 'complete': 'Completo', 'rooms': 'Por habitaciones' };
+            const catLabels = { 'villa': 'Villa', 'house': 'Casa', 'apartment': 'Apartamento', 'bungalow': 'Bungalow' };
+            const monthlyPrice = p.price > 0 ? Math.round(p.price / (p.beds || 1)) : 0;
 
             return `
-                <div class="contract-card">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold text-gray-800">${c.tenant_name || 'Inquilino'}</h4>
-                            <p class="text-sm text-gray-500">${c.address || ''}</p>
+                <div class="property-card bg-white rounded-2xl overflow-hidden card-shadow card-shadow-hover border border-gray-100/60 fade-enter">
+                    <div class="relative">
+                        <img src="${p.image || 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=400&fit=crop'}" alt="${p.title}" class="property-img" loading="lazy" />
+                        ${isOwner ? `<button onclick="openManageModal('${p.id}')" class="absolute bottom-3 right-3 btn-gestionar"><i class="fas fa-cog mr-1"></i>Gestionar</button>` : ''}
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-start">
+                            <div><h3 class="text-lg font-semibold text-gray-800">${p.title}</h3><p class="text-sm text-gray-500">${p.address}, ${p.city}</p></div>
+                            <span class="text-lg font-bold text-gray-800">${monthlyPrice > 0 ? '€' + monthlyPrice.toLocaleString() + '/Mes' : 'Precio a consultar'}</span>
                         </div>
-                        <span class="contract-status ${statusClasses[c.status]}">${statusLabels[c.status]}</span>
-                    </div>
-                    <div class="flex justify-between items-center mt-2 text-sm">
-                        <span class="text-gray-500">Inicio: ${c.start_date} | Fin: ${c.end_date}</span>
-                        <span class="text-xs font-medium">€${c.price}/mes</span>
-                    </div>
-                    <div class="flex gap-2 mt-3 flex-wrap">
-                        <button onclick="viewContract('${c.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver contrato</button>
-                        ${!isRejected ? `
-                            <button onclick="rejectContract('${c.id}')" class="btn-sm btn-sm-danger"><i class="fas fa-times mr-1"></i>Desestimar</button>
+                        <div class="flex items-center gap-2 mt-2 flex-wrap">
+                            <span class="rental-type">${rentalLabels[p.rental_type] || 'Completo'}</span>
+                            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full">${catLabels[p.category] || p.category}</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 text-sm text-gray-500 flex-wrap">
+                            <span><i class="fas fa-bed mr-1"></i> ${p.beds} Hab.</span>
+                            <span><i class="fas fa-bath mr-1"></i> ${p.baths} Baños</span>
+                            <span><i class="fas fa-vector-square mr-1"></i> ${p.sqm} m²</span>
+                        </div>
+                        ${p.services && p.services.length > 0 ? `
+                            <div class="mt-2 flex gap-2 flex-wrap">
+                                ${p.services.split(',').map(s => {
+                                    const icons = { 'wifi': 'fa-wifi', 'piscina': 'fa-swimmer', 'garaje': 'fa-car' };
+                                    return `<span class="text-xs text-gray-500"><i class="fas ${icons[s.trim()] || 'fa-check'} mr-1"></i>${s.trim().charAt(0).toUpperCase() + s.trim().slice(1)}</span>`;
+                                }).join('')}
+                            </div>
                         ` : ''}
                     </div>
                 </div>
             `;
         }).join('');
     }
-}
 
-function setTenantSubcategory(sub) {
-    state.tenantSubcategory = sub;
-    document.querySelectorAll('.subcategory-item').forEach(el => {
-        el.classList.remove('active');
-        if (el.dataset.sub === sub) el.classList.add('active');
-    });
-    const filters = document.getElementById('contractFilters');
-    if (filters) filters.style.display = sub === 'contracts' ? 'flex' : 'none';
-    renderContracts();
-}
+    // ============================================
+    // RENDERIZAR INQUILINOS / CONTRATOS
+    // ============================================
+    function renderContracts() {
+        const container = document.getElementById('contractContainer');
+        if (!container) return;
 
-function filterContracts(filter) {
-    state.contractFilter = filter;
-    document.querySelectorAll('.filter-chip-contract').forEach(el => {
-        el.classList.remove('active');
-        if (el.dataset.filter === filter) el.classList.add('active');
-    });
-    renderContracts();
-}
+        const subcategory = state.tenantSubcategory || 'tenants';
 
-function viewContract(contractId) {
-    const contract = state.contracts.find(c => c.id === contractId);
-    if (!contract) return;
-    document.getElementById('contractModalTitle').textContent = `Contrato - ${contract.tenant_name || 'Inquilino'}`;
-    const content = document.getElementById('contractContent');
-    content.innerHTML = `
-        <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-            <p><strong>Inquilino:</strong> ${contract.tenant_name || 'N/A'}</p>
-            <p><strong>DNI/NIE:</strong> ${contract.dni || 'No especificado'}</p>
-            <p><strong>Dirección:</strong> ${contract.address || 'N/A'}</p>
-            <p><strong>Teléfono:</strong> ${contract.phone || 'No especificado'}</p>
-            <p><strong>Email:</strong> ${contract.email || 'No especificado'}</p>
-            <p><strong>Fecha inicio:</strong> ${contract.start_date || 'N/A'}</p>
-            <p><strong>Fecha fin:</strong> ${contract.end_date || 'N/A'}</p>
-            <p><strong>Precio:</strong> €${contract.price || 0}</p>
-            <p><strong>Estado:</strong> ${contract.status || 'N/A'}</p>
-        </div>
-    `;
-    document.getElementById('contractModal').classList.add('active');
-}
+        if (subcategory === 'tenants') {
+            if (state.tenants.length === 0) {
+                container.innerHTML =
+                    `<div class="text-center py-8 text-gray-400"><i class="fas fa-users text-3xl mb-2 block"></i><p>No hay inquilinos registrados.</p></div>`;
+                return;
+            }
 
-function closeContractModal() { document.getElementById('contractModal').classList.remove('active'); }
-
-async function rejectContract(contractId) {
-    if (!confirm('¿Desestimar este contrato?')) return;
-    
-    const { error } = await supabase
-        .from('contracts')
-        .update({ status: 'rejected' })
-        .eq('id', contractId);
-        
-    if (error) {
-        showToast('❌ Error al desestimar contrato', 'error');
-        return;
-    }
-    
-    state.contracts = state.contracts.map(c => 
-        c.id === contractId ? { ...c, status: 'rejected' } : c
-    );
-    renderContracts();
-    showToast('✅ Contrato desestimado', 'success');
-}
-
-// ============================================
-// FUNCIONES DE PROPIEDADES (CRUD)
-// ============================================
-function openAddPropertyModal() {
-    document.getElementById('addPropertyModal').classList.add('active');
-    document.querySelectorAll('#addPropertyModal .service-check').forEach(el => {
-        el.classList.remove('selected');
-        el.querySelector('input').checked = false;
-    });
-}
-
-function closeAddPropertyModal() { document.getElementById('addPropertyModal').classList.remove('active');
-    document.getElementById('addPropertyForm').reset();
-    document.getElementById('newImagePreview').classList.add('hidden'); }
-
-function previewNewImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            document.getElementById('newImagePreview').classList.remove('hidden');
-            document.getElementById('newImagePreviewImg').src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-async function saveNewProperty(e) {
-    e.preventDefault();
-    
-    const beds = parseInt(document.getElementById('newBeds').value) || 1;
-    const baths = parseInt(document.getElementById('newBaths').value) || 1;
-    const sqm = parseInt(document.getElementById('newSqm').value) || 50;
-    const price = parseFloat(document.getElementById('newPrice').value) || 0;
-    const rentalType = document.getElementById('newRentalType').value;
-    
-    const services = [];
-    document.querySelectorAll('#addPropertyModal .service-check.selected').forEach(el => {
-        services.push(el.querySelector('input').value);
-    });
-    
-    const newProperty = {
-        title: document.getElementById('newTitle').value.trim(),
-        address: document.getElementById('newAddress').value.trim(),
-        city: document.getElementById('newCity').value.trim(),
-        province: document.getElementById('newProvince').value.trim(),
-        category: document.getElementById('newCategory').value,
-        rental_type: rentalType,
-        beds: beds,
-        baths: baths,
-        sqm: sqm,
-        price: price,
-        services: services.join(','),
-        image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=400&fit=crop',
-        owner_id: state.currentUser.id
-    };
-    
-    const { data, error } = await supabase
-        .from('properties')
-        .insert([newProperty])
-        .select();
-        
-    if (error) {
-        showToast('❌ Error al crear propiedad', 'error');
-        return;
-    }
-    
-    state.properties.push(data[0]);
-    
-    if (rentalType === 'rooms') {
-        const roomTypes = ['Individual', 'Doble', 'Suite', 'Estándar'];
-        for (let i = 0; i < beds; i++) {
-            await supabase
-                .from('rooms')
-                .insert([{
-                    property_id: data[0].id,
-                    name: `Habitación ${i + 1}`,
-                    type: roomTypes[i % roomTypes.length],
-                    status: 'libre',
-                    price: 0
-                }]);
-        }
-    } else {
-        await supabase
-            .from('rooms')
-            .insert([{
-                property_id: data[0].id,
-                name: 'Propiedad completa',
-                type: 'Estándar',
-                status: 'libre',
-                price: 0
-            }]);
-    }
-    
-    closeAddPropertyModal();
-    renderProperties();
-    showToast('✅ ¡Propiedad creada correctamente!', 'success');
-}
-
-// ============================================
-// FUNCIONES DE GESTIÓN DE PROPIEDADES
-// ============================================
-async function openManageModal(propertyId) {
-    const property = state.properties.find(p => p.id === propertyId);
-    if (!property) return;
-    
-    state.currentManagePropertyId = propertyId;
-    
-    const modal = document.getElementById('manageModal');
-    document.getElementById('manageImage').src = property.image || 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=400&fit=crop';
-    document.getElementById('manageTitle').textContent = property.title;
-    document.getElementById('manageAddress').textContent = property.address;
-    document.getElementById('manageCity').textContent = `${property.city}, ${property.province}`;
-    document.getElementById('manageCategory').textContent = property.category.charAt(0).toUpperCase() + property.category.slice(1);
-    document.getElementById('manageBeds').textContent = property.beds;
-    document.getElementById('manageBaths').textContent = property.baths;
-    document.getElementById('manageSqm').textContent = property.sqm;
-    document.getElementById('manageRentalType').textContent = property.rental_type === 'complete' ? 'Completo' : 'Por habitaciones';
-    
-    const totalPrice = property.price || 0;
-    document.getElementById('manageTotalPrice').textContent = totalPrice ? '€' + totalPrice.toLocaleString() : 'Precio a consultar';
-    document.getElementById('manageAssignedPrice').textContent = '€0';
-    document.getElementById('manageRemainingPrice').textContent = '€' + totalPrice.toLocaleString();
-    
-    const { data: rooms } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('property_id', propertyId);
-        
-    const roomsList = document.getElementById('manageRoomsList');
-    
-    if (property.rental_type === 'complete') {
-        const room = rooms && rooms.length > 0 ? rooms[0] : { name: 'Propiedad completa', type: 'Estándar', status: 'libre', tenant_id: null, price: 0 };
-        const statusLabels = { 'libre': 'Libre', 'ocupada': 'Ocupada', 'reservada': 'Reservada' };
-        const statusClasses = { 'libre': 'status-text-libre', 'ocupada': 'status-text-ocupada', 'reservada': 'status-text-reservada' };
-        
-        roomsList.innerHTML = `
-            <div class="room-item">
-                <div class="room-info">
-                    <div class="room-image-placeholder"><i class="fas fa-image"></i></div>
-                    <div class="room-details">
-                        <span class="name">${room.name}</span>
-                        <span class="type">${room.type || 'Estándar'}</span>
-                        <span class="price">${room.price > 0 ? '€' + room.price + '/mes' : 'Sin precio asignado'}</span>
+            container.innerHTML = state.tenants.map(t => `
+                <div class="tenant-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">${t.name}</h4>
+                            <p class="text-sm text-gray-500">${t.email}</p>
+                        </div>
+                        <button onclick="openEditTenantModal('${t.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-edit mr-1"></i>Modificar</button>
+                    </div>
+                    <div class="mt-2 grid grid-cols-2 gap-1 text-sm">
+                        <span class="text-gray-500"><strong>DNI:</strong> ${t.dni || 'No especificado'}</span>
+                        <span class="text-gray-500"><strong>Teléfono:</strong> ${t.phone || 'No especificado'}</span>
                     </div>
                 </div>
-                <div class="room-actions">
-                    <span class="room-status-text ${statusClasses[room.status]}">${statusLabels[room.status]}</span>
-                    ${room.status === 'libre' ? `<button onclick="openAssignModalComplete('${property.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-user-plus mr-1"></i>Asignar</button>` : `
-                        <button onclick="changeRoomStatus('${property.id}', '${room.id}', 'libre')" class="btn-sm btn-sm-warning"><i class="fas fa-door-open mr-1"></i>Liberar</button>
-                    `}
-                </div>
-            </div>
-        `;
-    } else {
-        if (!rooms || rooms.length === 0) {
-            roomsList.innerHTML = '<p class="text-sm text-gray-400">No hay habitaciones</p>';
+            `).join('');
         } else {
-            roomsList.innerHTML = rooms.map(room => {
-                const statusLabels = { 'libre': 'Libre', 'ocupada': 'Ocupada', 'reservada': 'Reservada' };
-                const statusClasses = { 'libre': 'status-text-libre', 'ocupada': 'status-text-ocupada', 'reservada': 'status-text-reservada' };
-                
-                let actions = '';
-                if (room.status === 'libre') {
-                    actions = `
-                        <button onclick="openAssignModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-user-plus mr-1"></i>Asignar</button>
-                        <button onclick="openEditRoomModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-indigo"><i class="fas fa-edit mr-1"></i>Editar</button>
-                    `;
-                } else {
-                    actions = `
-                        <button onclick="changeRoomStatus('${property.id}', '${room.id}', 'libre')" class="btn-sm btn-sm-warning"><i class="fas fa-door-open mr-1"></i>Liberar</button>
-                        <button onclick="openAssignModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-user-edit mr-1"></i>Editar</button>
-                        <button onclick="openEditRoomModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-indigo"><i class="fas fa-edit mr-1"></i>Editar</button>
-                    `;
-                }
+            let filtered = state.contracts;
+            const filter = state.contractFilter || 'all';
+            if (filter !== 'all') filtered = filtered.filter(c => c.status === filter);
+            const searchTerm = document.getElementById('contractSearch')?.value?.toLowerCase() || '';
+            if (searchTerm) {
+                filtered = filtered.filter(c =>
+                    c.tenant_name?.toLowerCase().includes(searchTerm) ||
+                    c.address?.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML =
+                    `<div class="text-center py-8 text-gray-400"><i class="fas fa-file-contract text-3xl mb-2 block"></i><p>No hay contratos.</p></div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const statusLabels = { 'active': 'Activo', 'expiring': 'A punto de caducar',
+                    'expired': 'Vencido', 'rejected': 'Desestimado' };
+                const statusClasses = { 'active': 'status-active', 'expiring': 'status-expiring',
+                    'expired': 'status-expired', 'rejected': 'status-rejected' };
+                const isRejected = c.status === 'rejected';
+
                 return `
-                    <div class="room-item">
-                        <div class="room-info">
-                            <div class="room-image-placeholder"><i class="fas fa-image"></i></div>
-                            <div class="room-details">
-                                <span class="name">${room.name}</span>
-                                <span class="type">${room.type || 'Estándar'}</span>
-                                <span class="price">${room.price > 0 ? '€' + room.price + '/mes' : 'Sin precio asignado'}</span>
+                    <div class="contract-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-semibold text-gray-800">${c.tenant_name || 'Inquilino'}</h4>
+                                <p class="text-sm text-gray-500">${c.address || ''}</p>
                             </div>
+                            <span class="contract-status ${statusClasses[c.status]}">${statusLabels[c.status]}</span>
                         </div>
-                        <div class="room-actions">
-                            <span class="room-status-text ${statusClasses[room.status]}">${statusLabels[room.status]}</span>
-                            ${actions}
+                        <div class="flex justify-between items-center mt-2 text-sm">
+                            <span class="text-gray-500">Inicio: ${c.start_date} | Fin: ${c.end_date}</span>
+                            <span class="text-xs font-medium">€${c.price}/mes</span>
+                        </div>
+                        <div class="flex gap-2 mt-3 flex-wrap">
+                            <button onclick="viewContract('${c.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver contrato</button>
+                            ${!isRejected ? `
+                                <button onclick="rejectContract('${c.id}')" class="btn-sm btn-sm-danger"><i class="fas fa-times mr-1"></i>Desestimar</button>
+                            ` : ''}
                         </div>
                     </div>
                 `;
             }).join('');
         }
     }
-    
-    modal.classList.add('active');
-}
 
-function closeManageModal() { document.getElementById('manageModal').classList.remove('active'); }
+    function setTenantSubcategory(sub) {
+        state.tenantSubcategory = sub;
+        document.querySelectorAll('.subcategory-item').forEach(el => {
+            el.classList.remove('active');
+            if (el.dataset.sub === sub) el.classList.add('active');
+        });
+        const filters = document.getElementById('contractFilters');
+        if (filters) filters.style.display = sub === 'contracts' ? 'flex' : 'none';
+        renderContracts();
+    }
 
-async function deleteProperty() {
-    if (!confirm('¿Estás seguro de eliminar esta propiedad?')) return;
-    const propertyId = state.currentManagePropertyId;
-    
-    const { error } = await supabase
-        .from('properties')
-        .delete()
-        .eq('id', propertyId);
+    function filterContracts(filter) {
+        state.contractFilter = filter;
+        document.querySelectorAll('.filter-chip-contract').forEach(el => {
+            el.classList.remove('active');
+            if (el.dataset.filter === filter) el.classList.add('active');
+        });
+        renderContracts();
+    }
+
+    function viewContract(contractId) {
+        const contract = state.contracts.find(c => c.id === contractId);
+        if (!contract) return;
+        document.getElementById('contractModalTitle').textContent = `Contrato - ${contract.tenant_name || 'Inquilino'}`;
+        const content = document.getElementById('contractContent');
+        content.innerHTML = `
+            <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                <p><strong>Inquilino:</strong> ${contract.tenant_name || 'N/A'}</p>
+                <p><strong>DNI/NIE:</strong> ${contract.dni || 'No especificado'}</p>
+                <p><strong>Dirección:</strong> ${contract.address || 'N/A'}</p>
+                <p><strong>Teléfono:</strong> ${contract.phone || 'No especificado'}</p>
+                <p><strong>Email:</strong> ${contract.email || 'No especificado'}</p>
+                <p><strong>Fecha inicio:</strong> ${contract.start_date || 'N/A'}</p>
+                <p><strong>Fecha fin:</strong> ${contract.end_date || 'N/A'}</p>
+                <p><strong>Precio:</strong> €${contract.price || 0}</p>
+                <p><strong>Estado:</strong> ${contract.status || 'N/A'}</p>
+            </div>
+        `;
+        document.getElementById('contractModal').classList.add('active');
+    }
+
+    function closeContractModal() { document.getElementById('contractModal').classList.remove('active'); }
+
+    async function rejectContract(contractId) {
+        if (!confirm('¿Desestimar este contrato?')) return;
         
-    if (error) {
-        showToast('❌ Error al eliminar propiedad', 'error');
-        return;
-    }
-    
-    state.properties = state.properties.filter(p => p.id !== propertyId);
-    closeManageModal();
-    renderProperties();
-    showToast('✅ Propiedad eliminada correctamente', 'success');
-}
-
-// ============================================
-// FUNCIONES DE HABITACIONES
-// ============================================
-function openEditRoomModal(propertyId, roomId) {
-    showToast('🛠️ Editar habitación - Implementar', 'info');
-}
-
-function closeEditRoomModal() { document.getElementById('editRoomModal').classList.remove('active'); }
-
-async function changeRoomStatus(propertyId, roomId, newStatus) {
-    const { error } = await supabase
-        .from('rooms')
-        .update({ status: newStatus })
-        .eq('id', roomId);
+        const { error } = await supabaseClient
+            .from('contracts')
+            .update({ status: 'rejected' })
+            .eq('id', contractId);
+            
+        if (error) {
+            showToast('❌ Error al desestimar contrato', 'error');
+            return;
+        }
         
-    if (error) {
-        showToast('❌ Error al cambiar estado', 'error');
-        return;
+        state.contracts = state.contracts.map(c => 
+            c.id === contractId ? { ...c, status: 'rejected' } : c
+        );
+        renderContracts();
+        showToast('✅ Contrato desestimado', 'success');
     }
-    
-    await loadInitialData();
-    renderProperties();
-    openManageModal(propertyId);
-    showToast(`✅ Habitación cambiada a: ${newStatus}`, 'success');
-}
 
-// ============================================
-// FUNCIONES DE ASIGNACIÓN DE INQUILINOS
-// ============================================
-function openAssignModal(propertyId, roomId) {
-    const property = state.properties.find(p => p.id === propertyId);
-    if (!property) return;
-    
-    document.getElementById('assignModalTitle').textContent = `Asignar inquilino`;
-    document.getElementById('assignForm').reset();
-    document.getElementById('assignPropertyId').value = propertyId;
-    document.getElementById('assignRoomIndex').value = roomId;
-    document.getElementById('assignModal').classList.add('active');
-}
-
-function openAssignModalComplete(propertyId) {
-    const property = state.properties.find(p => p.id === propertyId);
-    if (!property) return;
-    
-    document.getElementById('assignModalTitle').textContent = `Asignar inquilino - Alquiler Completo`;
-    document.getElementById('assignForm').reset();
-    document.getElementById('assignPropertyId').value = propertyId;
-    document.getElementById('assignRoomIndex').value = '';
-    document.getElementById('assignModal').classList.add('active');
-}
-
-function closeAssignModal() { document.getElementById('assignModal').classList.remove('active'); }
-
-function previewAssignImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            document.getElementById('assignImagePreview').classList.remove('hidden');
-            document.getElementById('assignImagePreviewImg').src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+    // ============================================
+    // FUNCIONES DE PROPIEDADES (CRUD)
+    // ============================================
+    function openAddPropertyModal() {
+        document.getElementById('addPropertyModal').classList.add('active');
+        document.querySelectorAll('#addPropertyModal .service-check').forEach(el => {
+            el.classList.remove('selected');
+            el.querySelector('input').checked = false;
+        });
     }
-}
 
-async function saveAssignTenant(e) {
-    e.preventDefault();
-    
-    const propertyId = document.getElementById('assignPropertyId').value;
-    const roomId = document.getElementById('assignRoomIndex').value;
-    const name = document.getElementById('assignName').value.trim();
-    const dni = document.getElementById('assignDni').value.trim();
-    const email = document.getElementById('assignEmail').value.trim();
-    const phone = document.getElementById('assignPhone').value.trim() || 'No especificado';
-    const price = parseFloat(document.getElementById('assignPrice').value) || 0;
-    const startDate = document.getElementById('assignStartDate').value;
-    const endDate = document.getElementById('assignEndDate').value;
-    const password = document.getElementById('assignPassword').value.trim();
-    
-    if (!password) {
-        showToast('❌ La contraseña es requerida', 'error');
-        return;
+    function closeAddPropertyModal() { document.getElementById('addPropertyModal').classList.remove('active');
+        document.getElementById('addPropertyForm').reset();
+        document.getElementById('newImagePreview').classList.add('hidden'); }
+
+    function previewNewImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('newImagePreview').classList.remove('hidden');
+                document.getElementById('newImagePreviewImg').src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
     }
-    
-    try {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: email,
-            password: password,
+
+    async function saveNewProperty(e) {
+        e.preventDefault();
+        
+        const beds = parseInt(document.getElementById('newBeds').value) || 1;
+        const baths = parseInt(document.getElementById('newBaths').value) || 1;
+        const sqm = parseInt(document.getElementById('newSqm').value) || 50;
+        const price = parseFloat(document.getElementById('newPrice').value) || 0;
+        const rentalType = document.getElementById('newRentalType').value;
+        
+        const services = [];
+        document.querySelectorAll('#addPropertyModal .service-check.selected').forEach(el => {
+            services.push(el.querySelector('input').value);
         });
         
-        if (authError) {
-            showToast('❌ Error al crear usuario: ' + authError.message, 'error');
-            return;
-        }
+        const newProperty = {
+            title: document.getElementById('newTitle').value.trim(),
+            address: document.getElementById('newAddress').value.trim(),
+            city: document.getElementById('newCity').value.trim(),
+            province: document.getElementById('newProvince').value.trim(),
+            category: document.getElementById('newCategory').value,
+            rental_type: rentalType,
+            beds: beds,
+            baths: baths,
+            sqm: sqm,
+            price: price,
+            services: services.join(','),
+            image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=400&fit=crop',
+            owner_id: state.currentUser.id
+        };
         
-        const { data: tenantData, error: tenantError } = await supabase
-            .from('tenants')
-            .insert([{
-                name: name,
-                dni: dni,
-                email: email,
-                phone: phone,
-                user_id: authData.user.id
-            }])
+        const { data, error } = await supabaseClient
+            .from('properties')
+            .insert([newProperty])
             .select();
             
-        if (tenantError) {
-            showToast('❌ Error al crear inquilino', 'error');
+        if (error) {
+            showToast('❌ Error al crear propiedad', 'error');
             return;
         }
         
-        const tenantId = tenantData[0].id;
+        state.properties.push(data[0]);
         
-        if (roomId) {
-            await supabase
+        if (rentalType === 'rooms') {
+            const roomTypes = ['Individual', 'Doble', 'Suite', 'Estándar'];
+            for (let i = 0; i < beds; i++) {
+                await supabaseClient
+                    .from('rooms')
+                    .insert([{
+                        property_id: data[0].id,
+                        name: `Habitación ${i + 1}`,
+                        type: roomTypes[i % roomTypes.length],
+                        status: 'libre',
+                        price: 0
+                    }]);
+            }
+        } else {
+            await supabaseClient
                 .from('rooms')
-                .update({ 
-                    tenant_id: tenantId, 
-                    status: 'ocupada',
-                    price: price
-                })
-                .eq('id', roomId);
+                .insert([{
+                    property_id: data[0].id,
+                    name: 'Propiedad completa',
+                    type: 'Estándar',
+                    status: 'libre',
+                    price: 0
+                }]);
         }
         
-        await supabase
-            .from('contracts')
-            .insert([{
-                tenant_id: tenantId,
-                room_id: roomId || null,
-                property_id: propertyId,
-                start_date: startDate,
-                end_date: endDate,
-                price: price,
-                status: 'active',
-                tenant_name: name,
-                dni: dni,
-                phone: phone,
-                email: email,
-                address: state.properties.find(p => p.id === propertyId)?.address || ''
-            }]);
+        closeAddPropertyModal();
+        renderProperties();
+        showToast('✅ ¡Propiedad creada correctamente!', 'success');
+    }
+
+    // ============================================
+    // FUNCIONES DE GESTIÓN DE PROPIEDADES
+    // ============================================
+    async function openManageModal(propertyId) {
+        const property = state.properties.find(p => p.id === propertyId);
+        if (!property) return;
         
-        closeAssignModal();
+        state.currentManagePropertyId = propertyId;
+        
+        const modal = document.getElementById('manageModal');
+        document.getElementById('manageImage').src = property.image || 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=400&fit=crop';
+        document.getElementById('manageTitle').textContent = property.title;
+        document.getElementById('manageAddress').textContent = property.address;
+        document.getElementById('manageCity').textContent = `${property.city}, ${property.province}`;
+        document.getElementById('manageCategory').textContent = property.category.charAt(0).toUpperCase() + property.category.slice(1);
+        document.getElementById('manageBeds').textContent = property.beds;
+        document.getElementById('manageBaths').textContent = property.baths;
+        document.getElementById('manageSqm').textContent = property.sqm;
+        document.getElementById('manageRentalType').textContent = property.rental_type === 'complete' ? 'Completo' : 'Por habitaciones';
+        
+        const totalPrice = property.price || 0;
+        document.getElementById('manageTotalPrice').textContent = totalPrice ? '€' + totalPrice.toLocaleString() : 'Precio a consultar';
+        document.getElementById('manageAssignedPrice').textContent = '€0';
+        document.getElementById('manageRemainingPrice').textContent = '€' + totalPrice.toLocaleString();
+        
+        const { data: rooms } = await supabaseClient
+            .from('rooms')
+            .select('*')
+            .eq('property_id', propertyId);
+            
+        const roomsList = document.getElementById('manageRoomsList');
+        
+        if (property.rental_type === 'complete') {
+            const room = rooms && rooms.length > 0 ? rooms[0] : { name: 'Propiedad completa', type: 'Estándar', status: 'libre', tenant_id: null, price: 0 };
+            const statusLabels = { 'libre': 'Libre', 'ocupada': 'Ocupada', 'reservada': 'Reservada' };
+            const statusClasses = { 'libre': 'status-text-libre', 'ocupada': 'status-text-ocupada', 'reservada': 'status-text-reservada' };
+            
+            roomsList.innerHTML = `
+                <div class="room-item">
+                    <div class="room-info">
+                        <div class="room-image-placeholder"><i class="fas fa-image"></i></div>
+                        <div class="room-details">
+                            <span class="name">${room.name}</span>
+                            <span class="type">${room.type || 'Estándar'}</span>
+                            <span class="price">${room.price > 0 ? '€' + room.price + '/mes' : 'Sin precio asignado'}</span>
+                        </div>
+                    </div>
+                    <div class="room-actions">
+                        <span class="room-status-text ${statusClasses[room.status]}">${statusLabels[room.status]}</span>
+                        ${room.status === 'libre' ? `<button onclick="openAssignModalComplete('${property.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-user-plus mr-1"></i>Asignar</button>` : `
+                            <button onclick="changeRoomStatus('${property.id}', '${room.id}', 'libre')" class="btn-sm btn-sm-warning"><i class="fas fa-door-open mr-1"></i>Liberar</button>
+                        `}
+                    </div>
+                </div>
+            `;
+        } else {
+            if (!rooms || rooms.length === 0) {
+                roomsList.innerHTML = '<p class="text-sm text-gray-400">No hay habitaciones</p>';
+            } else {
+                roomsList.innerHTML = rooms.map(room => {
+                    const statusLabels = { 'libre': 'Libre', 'ocupada': 'Ocupada', 'reservada': 'Reservada' };
+                    const statusClasses = { 'libre': 'status-text-libre', 'ocupada': 'status-text-ocupada', 'reservada': 'status-text-reservada' };
+                    
+                    let actions = '';
+                    if (room.status === 'libre') {
+                        actions = `
+                            <button onclick="openAssignModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-user-plus mr-1"></i>Asignar</button>
+                            <button onclick="openEditRoomModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-indigo"><i class="fas fa-edit mr-1"></i>Editar</button>
+                        `;
+                    } else {
+                        actions = `
+                            <button onclick="changeRoomStatus('${property.id}', '${room.id}', 'libre')" class="btn-sm btn-sm-warning"><i class="fas fa-door-open mr-1"></i>Liberar</button>
+                            <button onclick="openAssignModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-user-edit mr-1"></i>Editar</button>
+                            <button onclick="openEditRoomModal('${property.id}', '${room.id}')" class="btn-sm btn-sm-indigo"><i class="fas fa-edit mr-1"></i>Editar</button>
+                        `;
+                    }
+                    return `
+                        <div class="room-item">
+                            <div class="room-info">
+                                <div class="room-image-placeholder"><i class="fas fa-image"></i></div>
+                                <div class="room-details">
+                                    <span class="name">${room.name}</span>
+                                    <span class="type">${room.type || 'Estándar'}</span>
+                                    <span class="price">${room.price > 0 ? '€' + room.price + '/mes' : 'Sin precio asignado'}</span>
+                                </div>
+                            </div>
+                            <div class="room-actions">
+                                <span class="room-status-text ${statusClasses[room.status]}">${statusLabels[room.status]}</span>
+                                ${actions}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+        
+        modal.classList.add('active');
+    }
+
+    function closeManageModal() { document.getElementById('manageModal').classList.remove('active'); }
+
+    async function deleteProperty() {
+        if (!confirm('¿Estás seguro de eliminar esta propiedad?')) return;
+        const propertyId = state.currentManagePropertyId;
+        
+        const { error } = await supabaseClient
+            .from('properties')
+            .delete()
+            .eq('id', propertyId);
+            
+        if (error) {
+            showToast('❌ Error al eliminar propiedad', 'error');
+            return;
+        }
+        
+        state.properties = state.properties.filter(p => p.id !== propertyId);
+        closeManageModal();
+        renderProperties();
+        showToast('✅ Propiedad eliminada correctamente', 'success');
+    }
+
+    // ============================================
+    // FUNCIONES DE HABITACIONES
+    // ============================================
+    function openEditRoomModal(propertyId, roomId) {
+        showToast('🛠️ Editar habitación - Implementar', 'info');
+    }
+
+    function closeEditRoomModal() { document.getElementById('editRoomModal').classList.remove('active'); }
+
+    async function changeRoomStatus(propertyId, roomId, newStatus) {
+        const { error } = await supabaseClient
+            .from('rooms')
+            .update({ status: newStatus })
+            .eq('id', roomId);
+            
+        if (error) {
+            showToast('❌ Error al cambiar estado', 'error');
+            return;
+        }
+        
         await loadInitialData();
         renderProperties();
-        showToast('✅ Inquilino asignado exitosamente', 'success');
+        openManageModal(propertyId);
+        showToast(`✅ Habitación cambiada a: ${newStatus}`, 'success');
+    }
+
+    // ============================================
+    // FUNCIONES DE ASIGNACIÓN DE INQUILINOS
+    // ============================================
+    function openAssignModal(propertyId, roomId) {
+        const property = state.properties.find(p => p.id === propertyId);
+        if (!property) return;
         
-    } catch (error) {
-        showToast('❌ Error al asignar inquilino', 'error');
-        console.error(error);
+        document.getElementById('assignModalTitle').textContent = `Asignar inquilino`;
+        document.getElementById('assignForm').reset();
+        document.getElementById('assignPropertyId').value = propertyId;
+        document.getElementById('assignRoomIndex').value = roomId;
+        document.getElementById('assignModal').classList.add('active');
     }
-}
 
-// ============================================
-// FUNCIONES DE INQUILINOS (CRUD)
-// ============================================
-function openEditTenantModal(tenantId) {
-    const tenant = state.tenants.find(t => t.id === tenantId);
-    if (!tenant) return;
-    
-    document.getElementById('editTenantId').value = tenantId;
-    document.getElementById('editTenantName').value = tenant.name || '';
-    document.getElementById('editTenantDni').value = tenant.dni || '';
-    document.getElementById('editTenantEmail').value = tenant.email || '';
-    document.getElementById('editTenantPhone').value = tenant.phone || '';
-    document.getElementById('editTenantModal').classList.add('active');
-}
-
-function closeEditTenantModal() { document.getElementById('editTenantModal').classList.remove('active'); }
-
-async function saveEditTenant(e) {
-    e.preventDefault();
-    const tenantId = document.getElementById('editTenantId').value;
-    const name = document.getElementById('editTenantName').value.trim();
-    const dni = document.getElementById('editTenantDni').value.trim();
-    const email = document.getElementById('editTenantEmail').value.trim();
-    const phone = document.getElementById('editTenantPhone').value.trim();
-    
-    const { error } = await supabase
-        .from('tenants')
-        .update({ name, dni, email, phone })
-        .eq('id', tenantId);
+    function openAssignModalComplete(propertyId) {
+        const property = state.properties.find(p => p.id === propertyId);
+        if (!property) return;
         
-    if (error) {
-        showToast('❌ Error al actualizar inquilino', 'error');
-        return;
+        document.getElementById('assignModalTitle').textContent = `Asignar inquilino - Alquiler Completo`;
+        document.getElementById('assignForm').reset();
+        document.getElementById('assignPropertyId').value = propertyId;
+        document.getElementById('assignRoomIndex').value = '';
+        document.getElementById('assignModal').classList.add('active');
     }
-    
-    state.tenants = state.tenants.map(t => 
-        t.id === tenantId ? { ...t, name, dni, email, phone } : t
-    );
-    
-    closeEditTenantModal();
-    renderContracts();
-    showToast('✅ Inquilino actualizado correctamente', 'success');
-}
 
-// ============================================
-// FUNCIONES DE PERFIL
-// ============================================
-function openProfileModal() {
-    const modal = document.getElementById('profileModal');
-    const user = state.currentUser;
-    document.getElementById('profileName').value = user.name || '';
-    document.getElementById('profileNameDisplay').textContent = user.name || 'Usuario';
-    document.getElementById('profileEmailDisplay').textContent = user.email || '';
-    document.getElementById('profileEmail').value = user.email || '';
-    document.getElementById('profilePhone').value = user.phone || '';
-    
-    if (user.image) {
-        document.getElementById('profileAvatarImg').src = user.image;
-        document.getElementById('profileAvatarImg').classList.remove('hidden');
-        document.getElementById('profileAvatarInitials').classList.add('hidden');
-    } else {
-        document.getElementById('profileAvatarImg').classList.add('hidden');
-        document.getElementById('profileAvatarInitials').classList.remove('hidden');
-        document.getElementById('profileAvatarInitials').textContent = user.initials || 'U';
+    function closeAssignModal() { document.getElementById('assignModal').classList.remove('active'); }
+
+    function previewAssignImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('assignImagePreview').classList.remove('hidden');
+                document.getElementById('assignImagePreviewImg').src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
     }
-    modal.classList.add('active');
-}
 
-function closeProfileModal() { document.getElementById('profileModal').classList.remove('active'); }
+    async function saveAssignTenant(e) {
+        e.preventDefault();
+        
+        const propertyId = document.getElementById('assignPropertyId').value;
+        const roomId = document.getElementById('assignRoomIndex').value;
+        const name = document.getElementById('assignName').value.trim();
+        const dni = document.getElementById('assignDni').value.trim();
+        const email = document.getElementById('assignEmail').value.trim();
+        const phone = document.getElementById('assignPhone').value.trim() || 'No especificado';
+        const price = parseFloat(document.getElementById('assignPrice').value) || 0;
+        const startDate = document.getElementById('assignStartDate').value;
+        const endDate = document.getElementById('assignEndDate').value;
+        const password = document.getElementById('assignPassword').value.trim();
+        
+        if (!password) {
+            showToast('❌ La contraseña es requerida', 'error');
+            return;
+        }
+        
+        try {
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+            });
+            
+            if (authError) {
+                showToast('❌ Error al crear usuario: ' + authError.message, 'error');
+                return;
+            }
+            
+            const { data: tenantData, error: tenantError } = await supabaseClient
+                .from('tenants')
+                .insert([{
+                    name: name,
+                    dni: dni,
+                    email: email,
+                    phone: phone,
+                    user_id: authData.user.id
+                }])
+                .select();
+                
+            if (tenantError) {
+                showToast('❌ Error al crear inquilino', 'error');
+                return;
+            }
+            
+            const tenantId = tenantData[0].id;
+            
+            if (roomId) {
+                await supabaseClient
+                    .from('rooms')
+                    .update({ 
+                        tenant_id: tenantId, 
+                        status: 'ocupada',
+                        price: price
+                    })
+                    .eq('id', roomId);
+            }
+            
+            await supabaseClient
+                .from('contracts')
+                .insert([{
+                    tenant_id: tenantId,
+                    room_id: roomId || null,
+                    property_id: propertyId,
+                    start_date: startDate,
+                    end_date: endDate,
+                    price: price,
+                    status: 'active',
+                    tenant_name: name,
+                    dni: dni,
+                    phone: phone,
+                    email: email,
+                    address: state.properties.find(p => p.id === propertyId)?.address || ''
+                }]);
+            
+            closeAssignModal();
+            await loadInitialData();
+            renderProperties();
+            showToast('✅ Inquilino asignado exitosamente', 'success');
+            
+        } catch (error) {
+            showToast('❌ Error al asignar inquilino', 'error');
+            console.error(error);
+        }
+    }
 
-function previewProfileImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            document.getElementById('profileAvatarImg').src = ev.target.result;
+    // ============================================
+    // FUNCIONES DE INQUILINOS (CRUD)
+    // ============================================
+    function openEditTenantModal(tenantId) {
+        const tenant = state.tenants.find(t => t.id === tenantId);
+        if (!tenant) return;
+        
+        document.getElementById('editTenantId').value = tenantId;
+        document.getElementById('editTenantName').value = tenant.name || '';
+        document.getElementById('editTenantDni').value = tenant.dni || '';
+        document.getElementById('editTenantEmail').value = tenant.email || '';
+        document.getElementById('editTenantPhone').value = tenant.phone || '';
+        document.getElementById('editTenantModal').classList.add('active');
+    }
+
+    function closeEditTenantModal() { document.getElementById('editTenantModal').classList.remove('active'); }
+
+    async function saveEditTenant(e) {
+        e.preventDefault();
+        const tenantId = document.getElementById('editTenantId').value;
+        const name = document.getElementById('editTenantName').value.trim();
+        const dni = document.getElementById('editTenantDni').value.trim();
+        const email = document.getElementById('editTenantEmail').value.trim();
+        const phone = document.getElementById('editTenantPhone').value.trim();
+        
+        const { error } = await supabaseClient
+            .from('tenants')
+            .update({ name, dni, email, phone })
+            .eq('id', tenantId);
+            
+        if (error) {
+            showToast('❌ Error al actualizar inquilino', 'error');
+            return;
+        }
+        
+        state.tenants = state.tenants.map(t => 
+            t.id === tenantId ? { ...t, name, dni, email, phone } : t
+        );
+        
+        closeEditTenantModal();
+        renderContracts();
+        showToast('✅ Inquilino actualizado correctamente', 'success');
+    }
+
+    // ============================================
+    // FUNCIONES DE PERFIL
+    // ============================================
+    function openProfileModal() {
+        const modal = document.getElementById('profileModal');
+        const user = state.currentUser;
+        document.getElementById('profileName').value = user.name || '';
+        document.getElementById('profileNameDisplay').textContent = user.name || 'Usuario';
+        document.getElementById('profileEmailDisplay').textContent = user.email || '';
+        document.getElementById('profileEmail').value = user.email || '';
+        document.getElementById('profilePhone').value = user.phone || '';
+        
+        if (user.image) {
+            document.getElementById('profileAvatarImg').src = user.image;
             document.getElementById('profileAvatarImg').classList.remove('hidden');
             document.getElementById('profileAvatarInitials').classList.add('hidden');
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-async function saveProfile(e) {
-    e.preventDefault();
-    const name = document.getElementById('profileName').value.trim();
-    const phone = document.getElementById('profilePhone').value.trim();
-    const email = document.getElementById('profileEmail').value.trim();
-    
-    const updates = { name, phone, email };
-    
-    const fileInput = document.getElementById('profileImageInput');
-    if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = async function(ev) {
-            updates.image = ev.target.result;
-            await updateProfile(updates);
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    } else {
-        await updateProfile(updates);
-    }
-}
-
-async function updateProfile(updates) {
-    const { error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', state.currentUser.id);
-        
-    if (error) {
-        showToast('❌ Error al actualizar perfil', 'error');
-        return;
-    }
-    
-    state.currentUser = { ...state.currentUser, ...updates };
-    updateProfileIcon();
-    closeProfileModal();
-    showToast('✅ Perfil actualizado exitosamente', 'success');
-}
-
-// ============================================
-// TOAST
-// ============================================
-let toastTimeout;
-
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-    toastMessage.textContent = message;
-    toast.className =
-        'toast fixed top-20 left-1/2 transform -translate-x-1/2 text-white px-6 py-3.5 rounded-full shadow-2xl text-sm font-medium z-[100] max-w-[90%] text-center';
-    if (type === 'success') toast.classList.add('toast-success');
-    else if (type === 'error') toast.classList.add('toast-error');
-    else toast.classList.add('toast-info');
-    toast.classList.remove('hidden');
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { toast.classList.add('hidden'); }, 3000);
-}
-
-// ============================================
-// INICIALIZACIÓN
-// ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Inicializando aplicación...');
-    setLoginRole('owner');
-    
-    // Verificar sesión existente
-    supabase.auth.getSession().then(({ data }) => {
-        if (data.session) {
-            console.log('✅ Sesión existente encontrada');
-            loadInitialData();
         } else {
-            console.log('📝 No hay sesión activa');
+            document.getElementById('profileAvatarImg').classList.add('hidden');
+            document.getElementById('profileAvatarInitials').classList.remove('hidden');
+            document.getElementById('profileAvatarInitials').textContent = user.initials || 'U';
         }
-    }).catch(error => {
-        console.error('Error al obtener sesión:', error);
-    });
-});
-
-// Cerrar modales con Escape
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        closeManageModal();
-        closeAssignModal();
-        closeAddPropertyModal();
-        closeProfileModal();
-        closeEditRoomModal();
-        closeFilterModal();
-        closeContractModal();
-        closeEditTenantModal();
-        closePaymentModal();
-        closeIncidenciaModal();
-        closeResolverModal();
+        modal.classList.add('active');
     }
-});
-</script>
+
+    function closeProfileModal() { document.getElementById('profileModal').classList.remove('active'); }
+
+    function previewProfileImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('profileAvatarImg').src = ev.target.result;
+                document.getElementById('profileAvatarImg').classList.remove('hidden');
+                document.getElementById('profileAvatarInitials').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    async function saveProfile(e) {
+        e.preventDefault();
+        const name = document.getElementById('profileName').value.trim();
+        const phone = document.getElementById('profilePhone').value.trim();
+        const email = document.getElementById('profileEmail').value.trim();
+        
+        const updates = { name, phone, email };
+        
+        const fileInput = document.getElementById('profileImageInput');
+        if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = async function(ev) {
+                updates.image = ev.target.result;
+                await updateProfile(updates);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            await updateProfile(updates);
+        }
+    }
+
+    async function updateProfile(updates) {
+        const { error } = await supabaseClient
+            .from('users')
+            .update(updates)
+            .eq('id', state.currentUser.id);
+            
+        if (error) {
+            showToast('❌ Error al actualizar perfil', 'error');
+            return;
+        }
+        
+        state.currentUser = { ...state.currentUser, ...updates };
+        updateProfileIcon();
+        closeProfileModal();
+        showToast('✅ Perfil actualizado exitosamente', 'success');
+    }
+
+    // ============================================
+    // TOAST
+    // ============================================
+    let toastTimeout;
+
+    function showToast(message, type = 'info') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        toastMessage.textContent = message;
+        toast.className =
+            'toast fixed top-20 left-1/2 transform -translate-x-1/2 text-white px-6 py-3.5 rounded-full shadow-2xl text-sm font-medium z-[100] max-w-[90%] text-center';
+        if (type === 'success') toast.classList.add('toast-success');
+        else if (type === 'error') toast.classList.add('toast-error');
+        else toast.classList.add('toast-info');
+        toast.classList.remove('hidden');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+    }
+
+    // ============================================
+    // INICIALIZACIÓN
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Inicializando aplicación...');
+        setLoginRole('owner');
+        
+        // Verificar sesión existente con supabaseClient
+        supabaseClient.auth.getSession().then(({ data }) => {
+            if (data.session) {
+                console.log('✅ Sesión existente encontrada');
+                loadInitialData();
+            } else {
+                console.log('📝 No hay sesión activa');
+            }
+        }).catch(error => {
+            console.error('Error al obtener sesión:', error);
+        });
+    });
+
+    // Cerrar modales con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeManageModal();
+            closeAssignModal();
+            closeAddPropertyModal();
+            closeProfileModal();
+            closeEditRoomModal();
+            closeFilterModal();
+            closeContractModal();
+            closeEditTenantModal();
+            closePaymentModal();
+            closeIncidenciaModal();
+            closeResolverModal();
+        }
+    });
+    </script>
 
 </body>
 </html>
