@@ -438,9 +438,6 @@
 const SUPABASE_URL = 'https://wadujlpbpatkzdpnuqxl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_bSozVxnQyrkA4kAmlU6WZA_SJC1pY-b';
 
-// Crear cliente de Supabase
-let supabase = null;
-
 function initSupabase() {
     try {
         if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
