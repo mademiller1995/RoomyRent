@@ -439,7 +439,7 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_bSozVxnQyrkA4kAmlU6WZA_SJC1pY-b';
 
     // Crear cliente de Supabase (SOLO UNA VEZ) - Usando la variable global
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ============================================
     // ESTADO GLOBAL
@@ -501,7 +501,7 @@
         const password = document.getElementById('loginPassword').value.trim();
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
@@ -544,7 +544,7 @@
 
     async function logout() {
         if (!confirm('¿Estás seguro de cerrar sesión?')) return;
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
         state.currentUser = null;
         state.role = null;
         document.getElementById('mainApp').classList.add('hidden');
@@ -584,7 +584,7 @@
             let query = supabase.from('properties').select('*');
             
             if (state.role === 'tenant') {
-                const { data: tenantContracts } = await supabase
+                const { data: tenantContracts } = await supabaseClient
                     .from('contracts')
                     .select('property_id')
                     .eq('tenant_id', state.currentUser.id)
