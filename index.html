@@ -2067,7 +2067,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         setLoginRole('owner');
         // Ahora usamos la variable supabase que definimos al principio
-        supabase.auth.getSession().then(({ data }) => {
+        supabaseClient.auth.getSession().then(({ data }) => {
             if (data.session) {
                 // Si hay sesión, cargamos los datos
                 loadInitialData();
