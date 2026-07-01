@@ -159,53 +159,14 @@
         .incidencia-filter:hover { background: #e2e8f0; }
         .incidencia-filter.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
         .gasto-detail { font-size: 13px; }
-        .landing-card { background: white; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: all 0.3s; }
-        .landing-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
     <div id="app" class="max-w-md mx-auto bg-[#f0f2f5] min-h-screen">
 
-        <!-- ==================== LANDING PAGE ==================== -->
-        <div id="landingPage" class="min-h-screen bg-gradient-to-b from-indigo-50 to-white p-6 flex flex-col items-center justify-center">
-            <div class="text-center">
-                <div class="text-5xl mb-4">🏡</div>
-                <h1 class="text-4xl font-bold text-indigo-600 tracking-tight">ROOMYRENT</h1>
-                <p class="text-gray-500 text-sm mt-2 font-light">Sistema inteligente de gestión de alquileres</p>
-                <div class="mt-8 grid grid-cols-2 gap-4 max-w-sm mx-auto">
-                    <div class="landing-card">
-                        <i class="fas fa-building text-indigo-500 text-2xl"></i>
-                        <p class="text-xs text-gray-600 mt-2 font-medium">Gestión de Inmuebles</p>
-                        <p class="text-[10px] text-gray-400">Administra tus propiedades de forma sencilla</p>
-                    </div>
-                    <div class="landing-card">
-                        <i class="fas fa-coins text-indigo-500 text-2xl"></i>
-                        <p class="text-xs text-gray-600 mt-2 font-medium">Control de Pagos</p>
-                        <p class="text-[10px] text-gray-400">Seguimiento de ingresos y gastos</p>
-                    </div>
-                    <div class="landing-card">
-                        <i class="fas fa-users text-indigo-500 text-2xl"></i>
-                        <p class="text-xs text-gray-600 mt-2 font-medium">Gestión de Inquilinos</p>
-                        <p class="text-[10px] text-gray-400">Administra tus inquilinos fácilmente</p>
-                    </div>
-                    <div class="landing-card">
-                        <i class="fas fa-exclamation-triangle text-indigo-500 text-2xl"></i>
-                        <p class="text-xs text-gray-600 mt-2 font-medium">Incidencias</p>
-                        <p class="text-[10px] text-gray-400">Gestiona y resuelve incidencias rápidamente</p>
-                    </div>
-                </div>
-                <div class="mt-8">
-                    <button onclick="showLoginForm()" class="bg-indigo-600 text-white px-8 py-3 rounded-full hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 font-medium">
-                        <i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión
-                    </button>
-                </div>
-                <p class="text-[10px] text-gray-400 mt-6">© 2026 RoomyRent - Todos los derechos reservados</p>
-            </div>
-        </div>
-
         <!-- ==================== LOGIN ==================== -->
-        <div id="loginScreen" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
             <div class="login-card">
                 <div class="text-center mb-8">
                     <div class="text-3xl font-bold text-indigo-600 tracking-tight">🏡 ROOMYRENT</div>
@@ -229,9 +190,6 @@
                     <p><span class="font-semibold text-gray-500">Propietario:</span> propietario@roomyrent.com / 123456</p>
                     <p><span class="font-semibold text-gray-500">Inquilino:</span> inquilino@roomyrent.com / 123456</p>
                 </div>
-                <button onclick="showLandingPage()" class="mt-3 text-xs text-indigo-500 hover:text-indigo-700 transition w-full text-center">
-                    <i class="fas fa-arrow-left mr-1"></i>Volver al inicio
-                </button>
             </div>
         </div>
 
@@ -306,6 +264,7 @@
             </div>
         </div>
 
+        <!-- Resto de modales -->
         <div id="manageModal" class="modal-overlay">
             <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto modal-content p-0">
                 <div class="relative">
@@ -500,7 +459,8 @@
             incidenciaFilter: 'todas',
             currentCategory: 'all',
             currentManagePropertyId: null,
-            searchTerm: ''
+            searchTerm: '',
+            currentCategory: 'all'
         };
 
         let CHART_DATA = {
@@ -510,19 +470,6 @@
         };
 
         let chartInstance = null;
-
-        // ============================================
-        // FUNCIONES DE NAVEGACIÓN (Landing <-> Login)
-        // ============================================
-        function showLoginForm() {
-            document.getElementById('landingPage').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-        }
-
-        function showLandingPage() {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('landingPage').classList.remove('hidden');
-        }
 
         // ============================================
         // FUNCIONES DE AUTENTICACIÓN
@@ -602,7 +549,6 @@
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('bottomNav').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('landingPage').classList.add('hidden');
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
             showToast('👋 Sesión cerrada', 'info');
@@ -704,11 +650,10 @@
         }
 
         // ============================================
-        // NAVEGACIÓN
+        // NAVEGACIÓN (TODA TU LÓGICA ORIGINAL)
         // ============================================
         function navigateTo(view) {
             state.currentView = view;
-            
             document.querySelectorAll('.bottom-nav-item').forEach(item => {
                 item.classList.remove('tab-active');
                 item.classList.add('tab-inactive');
@@ -723,30 +668,151 @@
             const mainContent = document.getElementById('mainContent');
             const floatBtn = document.getElementById('floatButton');
 
-            if (state.role === 'owner' && view === 'propiedades') {
+            if (view === 'propiedades') {
                 floatBtn.classList.remove('hidden');
-            } else {
+                mainContent.innerHTML = `
+                    <div class="flex items-center gap-2 mb-3">
+                        <button onclick="openFilterModal()" class="filter-btn-header">
+                            <i class="fas fa-sliders-h"></i>
+                            <span id="filterBadge" class="badge hidden">0</span>
+                        </button>
+                        <div class="search-box flex-1">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="searchInput" placeholder="Buscar..." oninput="filterProperties()" />
+                            <button onclick="document.getElementById('searchInput').value=''; filterProperties();" class="text-gray-400 hover:text-gray-600 transition">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2" id="categoryContainer">
+                        <span class="category-item active" data-category="all" onclick="filterByCategory(this, 'all')"><i class="fas fa-th-large"></i> Todas</span>
+                        <span class="category-item inactive" data-category="house" onclick="filterByCategory(this, 'house')"><i class="fas fa-house-chimney"></i> Casa</span>
+                        <span class="category-item inactive" data-category="villa" onclick="filterByCategory(this, 'villa')"><i class="fas fa-home"></i> Villa</span>
+                        <span class="category-item inactive" data-category="apartment" onclick="filterByCategory(this, 'apartment')"><i class="fas fa-building"></i> Apartamento</span>
+                        <span class="category-item inactive" data-category="bungalow" onclick="filterByCategory(this, 'bungalow')"><i class="fas fa-house"></i> Bungalow</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-500">Mostrando <span id="propertyCount">0</span> viviendas</span>
+                    </div>
+                    <div id="propertyList" class="space-y-4"></div>
+                `;
+                const cat = state.currentCategory || 'all';
+                document.querySelectorAll('.category-item').forEach(el => {
+                    el.classList.remove('active');
+                    el.classList.add('inactive');
+                    if (el.dataset.category === cat) { el.classList.remove('inactive');
+                        el.classList.add('active'); }
+                });
+                renderProperties();
+                showToast('🏢 Propiedades', 'info');
+            } else if (view === 'inquilinos') {
                 floatBtn.classList.add('hidden');
+                mainContent.innerHTML = `
+                    <div class="mb-3">
+                        <div class="flex gap-2 mb-3">
+                            <span class="subcategory-item active" data-sub="tenants" onclick="setTenantSubcategory('tenants')">Inquilinos</span>
+                            <span class="subcategory-item" data-sub="contracts" onclick="setTenantSubcategory('contracts')">Contratos</span>
+                        </div>
+                        <div id="contractFilters" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style="display:none;">
+                            <span class="filter-chip-contract active" data-filter="all" onclick="filterContracts('all')">Todos</span>
+                            <span class="filter-chip-contract" data-filter="active" onclick="filterContracts('active')">Activos</span>
+                            <span class="filter-chip-contract" data-filter="expiring" onclick="filterContracts('expiring')">A punto de caducar</span>
+                            <span class="filter-chip-contract" data-filter="expired" onclick="filterContracts('expired')">Vencidos</span>
+                            <span class="filter-chip-contract" data-filter="rejected" onclick="filterContracts('rejected')">Desestimados</span>
+                        </div>
+                        <div class="search-box mt-2">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="contractSearch" placeholder="Buscar por nombre o dirección..." oninput="renderContracts()" />
+                        </div>
+                    </div>
+                    <div id="contractContainer" class="space-y-3"></div>
+                `;
+                const filters = document.getElementById('contractFilters');
+                if (filters) filters.style.display = state.tenantSubcategory === 'contracts' ? 'flex' : 'none';
+                renderContracts();
+                showToast('👥 Inquilinos', 'info');
+            } else if (view === 'gastos') {
+                floatBtn.classList.add('hidden');
+                const propertyOptions = state.properties.map(p =>
+                    `<option value="${p.id}">${p.title}</option>`
+                ).join('');
+                mainContent.innerHTML = `
+                    <div class="bg-white rounded-2xl p-4 card-shadow">
+                        <h3 class="font-semibold text-gray-800 mb-3">💰 REPARTIR GASTOS AUTOMÁTICOS</h3>
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Vivienda</label>
+                            <select id="gastoProperty" class="login-input">
+                                <option value="">Seleccionar vivienda</option>
+                                ${propertyOptions}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de gasto</label>
+                            <select id="gastoType" class="login-input">
+                                <option value="luz">Luz</option>
+                                <option value="agua">Agua</option>
+                                <option value="internet">Internet</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Mes</label><select id="gastoMonth" class="login-input"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Año</label><input type="number" id="gastoYear" class="login-input" placeholder="2024" value="${new Date().getFullYear()}" /></div>
+                        </div>
+                        <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Importe factura (€)</label><input type="number" id="gastoAmount" class="login-input" placeholder="150.00" step="0.01" /></div>
+                        <button onclick="repartirGastos()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Repartir entre inquilinos</button>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 card-shadow">
+                        <h3 class="font-semibold text-gray-800 mb-3">📋 Histórico de gastos</h3>
+                        <div id="gastosList" class="space-y-2"></div>
+                    </div>
+                `;
+                renderGastos();
+                showToast('💰 Gastos', 'info');
+            } else if (view === 'incidencias') {
+                floatBtn.classList.add('hidden');
+                mainContent.innerHTML = `
+                    <div class="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                        <span class="incidencia-filter active" data-filter="todas" onclick="filterIncidencias(this, 'todas')">Todas</span>
+                        <span class="incidencia-filter" data-filter="pendiente" onclick="filterIncidencias(this, 'pendiente')">Abiertas</span>
+                        <span class="incidencia-filter" data-filter="resuelta" onclick="filterIncidencias(this, 'resuelta')">Resueltas</span>
+                    </div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="search-box flex-1">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="incidenciaSearch" placeholder="Buscar incidencia..." oninput="renderIncidencias()" />
+                        </div>
+                        <button onclick="openAddIncidencia()" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition whitespace-nowrap">
+                            <i class="fas fa-plus mr-1"></i>Nueva
+                        </button>
+                    </div>
+                    <div id="incidenciasList" class="space-y-3"></div>
+                `;
+                actualizarSelectoresIncidencias();
+                renderIncidencias();
+                showToast('⚠️ Incidencias', 'info');
+            } else {
+                // RESUMEN
+                floatBtn.classList.add('hidden');
+                renderResumen();
             }
+        }
 
-            switch(view) {
-                case 'resumen':
-                    renderResumen();
-                    break;
-                case 'propiedades':
-                    renderPropiedades();
-                    break;
-                case 'inquilinos':
-                    renderInquilinos();
-                    break;
-                case 'gastos':
-                    renderGastosView();
-                    break;
-                case 'incidencias':
-                    renderIncidenciasView();
-                    break;
-                default:
-                    renderResumen();
+        // ============================================
+        // ACTUALIZAR SELECTORES DE INCIDENCIAS
+        // ============================================
+        function actualizarSelectoresIncidencias() {
+            const propertySelect = document.getElementById('incidenciaProperty');
+            const tenantSelect = document.getElementById('incidenciaTenant');
+            if (propertySelect) {
+                propertySelect.innerHTML = `<option value="">Seleccionar</option>` +
+                    state.properties.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+            }
+            if (tenantSelect && state.role === 'owner') {
+                tenantSelect.innerHTML = `<option value="">Seleccionar</option>` +
+                    state.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            } else if (tenantSelect && state.role === 'tenant') {
+                tenantSelect.innerHTML = `<option value="${state.currentUser.id}">${state.currentUser.name}</option>`;
+                tenantSelect.disabled = true;
             }
         }
 
@@ -755,22 +821,21 @@
         // ============================================
         function renderResumen() {
             const mainContent = document.getElementById('mainContent');
-            const name = state.currentUser ? state.currentUser.name : 'Usuario';
-            
+            const name = state.currentUser ? state.currentUser.name : 'Propietario';
             const totalProperties = state.properties.length;
             const totalTenants = state.role === 'owner' ? state.tenants.length : 0;
             const totalContracts = state.contracts.length;
             const expiringContracts = state.contracts.filter(c => c.status === 'expiring').length;
             const overduePayments = state.payments.filter(p => p.status === 'overdue');
             const paidPayments = state.payments.filter(p => p.status === 'paid');
-            const totalPaid = paidPayments.reduce((s, p) => s + (p.amount || 0), 0);
+            const totalPaid = paidPayments.reduce((s, p) => s + p.amount, 0);
 
             mainContent.innerHTML = `
                 <div class="flex items-center gap-3">
                     <span class="text-3xl">👋</span>
                     <div>
                         <p class="greeting-text">Hola, ${name}</p>
-                        <p class="greeting-sub">${state.role === 'owner' ? 'Panel de control' : 'Tu espacio'}</p>
+                        <p class="greeting-sub">Bienvenido de vuelta</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
@@ -781,36 +846,39 @@
                     <div class="kpi-card">
                         <div class="flex items-center gap-2"><i class="fas fa-building kpi-icon"></i><span class="kpi-label">Viviendas</span></div>
                         <p class="kpi-value">${totalProperties}</p>
+                        <span class="kpi-vs up">↑ 0 vs mes anterior</span>
                     </div>
-                    ${state.role === 'owner' ? `
                     <div class="kpi-card">
                         <div class="flex items-center gap-2"><i class="fas fa-users kpi-icon"></i><span class="kpi-label">Inquilinos</span></div>
                         <p class="kpi-value">${totalTenants}</p>
+                        <span class="kpi-vs up">↑ 0 vs mes anterior</span>
                     </div>
                     <div class="kpi-card">
                         <div class="flex items-center gap-2"><i class="fas fa-clock kpi-icon"></i><span class="kpi-label">Pago pdte</span></div>
                         <p class="kpi-value">${overduePayments.length}</p>
+                        <span class="kpi-vs down">↓ 0 vs mes anterior</span>
                     </div>
                     <div class="kpi-card">
                         <div class="flex items-center gap-2"><i class="fas fa-check-circle kpi-icon"></i><span class="kpi-label">Beneficio actual</span></div>
                         <p class="kpi-value">€${totalPaid}</p>
+                        <span class="kpi-vs up">↑ 0 vs mes anterior</span>
                     </div>
-                    ` : `
+                </div>
+                <div class="grid grid-cols-2 gap-3">
                     <div class="kpi-card">
-                        <div class="flex items-center gap-2"><i class="fas fa-file-contract kpi-icon"></i><span class="kpi-label">Mi Contrato</span></div>
-                        <p class="kpi-value">${state.contracts.filter(c => c.status === 'active').length}</p>
+                        <div class="flex items-center gap-2"><i class="fas fa-file-contract kpi-icon"></i><span class="kpi-label">Contratos</span></div>
+                        <p class="kpi-value">${totalContracts}</p>
+                        <span class="text-xs text-yellow-600">🟡 ${expiringContracts} a punto caducar</span>
                     </div>
                     <div class="kpi-card">
-                        <div class="flex items-center gap-2"><i class="fas fa-exclamation-triangle kpi-icon"></i><span class="kpi-label">Incidencias</span></div>
-                        <p class="kpi-value">${state.incidents.filter(i => i.status === 'pendiente').length}</p>
+                        <div class="flex items-center gap-2"><i class="fas fa-chart-line kpi-icon"></i><span class="kpi-label">Ingresos vs Pdte</span></div>
+                        <p class="kpi-value text-sm">Ver gráfica</p>
                     </div>
-                    `}
                 </div>
                 <div class="chart-container">
                     <h4 class="font-semibold text-gray-800 mb-2">📊 Ingresos vs Pendiente (últimos 6 meses)</h4>
                     <canvas id="incomeChart" height="180"></canvas>
                 </div>
-                ${state.role === 'owner' ? `
                 <div>
                     <h4 class="font-semibold text-gray-800 mb-2">📋 Pagos caducados</h4>
                     ${overduePayments.length === 0 ? '<p class="text-sm text-gray-400">✅ No hay pagos caducados</p>' :
@@ -822,19 +890,17 @@
                         `).join('')
                     }
                 </div>
-                ` : `
                 <div>
-                    <h4 class="font-semibold text-gray-800 mb-2">📋 Mis Pagos</h4>
-                    ${state.payments.length === 0 ? '<p class="text-sm text-gray-400">No hay pagos registrados</p>' :
-                        state.payments.map(p => `
+                    <h4 class="font-semibold text-gray-800 mb-2">✅ Pagos puntuales</h4>
+                    ${paidPayments.length === 0 ? '<p class="text-sm text-gray-400">No hay pagos registrados</p>' :
+                        paidPayments.map(p => `
                             <div class="payment-card mb-2 flex justify-between items-center">
-                                <div><p class="font-medium text-gray-800">${p.month}/${p.year}</p><p class="text-xs text-gray-500">€${p.amount} · ${p.status === 'paid' ? '✅ Pagado' : '⏳ Pendiente'}</p></div>
-                                <button onclick="viewPayment('${p.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver</button>
+                                <div><p class="font-medium text-gray-800">${p.tenant_name || 'Inquilino'}</p><p class="text-xs text-gray-500">${p.property_name || ''}</p></div>
+                                <button onclick="viewPayment('${p.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-file-invoice mr-1"></i>Ver</button>
                             </div>
                         `).join('')
                     }
                 </div>
-                `}
             `;
 
             setTimeout(() => {
@@ -868,48 +934,356 @@
         }
 
         // ============================================
-        // RENDER PROPIEDADES
+        // GASTOS (Con Supabase)
         // ============================================
-        function renderPropiedades() {
-            const mainContent = document.getElementById('mainContent');
+        async function repartirGastos() {
+            const propertyId = document.getElementById('gastoProperty').value;
+            if (!propertyId) { showToast('❌ Selecciona una vivienda', 'error'); return; }
             
-            mainContent.innerHTML = `
-                <div class="flex items-center gap-2 mb-3">
-                    <button onclick="openFilterModal()" class="filter-btn-header">
-                        <i class="fas fa-sliders-h"></i>
-                        <span id="filterBadge" class="badge hidden">0</span>
-                    </button>
-                    <div class="search-box flex-1">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="searchInput" placeholder="Buscar..." oninput="filterProperties()" />
-                        <button onclick="document.getElementById('searchInput').value=''; filterProperties();" class="text-gray-400 hover:text-gray-600 transition">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
+            const { data: rooms } = await supabase
+                .from('rooms')
+                .select('tenant_id')
+                .eq('property_id', propertyId)
+                .not('tenant_id', 'is', null);
+                
+            const tenantIds = rooms.map(r => r.tenant_id);
+            if (tenantIds.length === 0) { showToast('❌ No hay inquilinos en esta vivienda', 'error'); return; }
+            
+            const type = document.getElementById('gastoType').value;
+            const month = parseInt(document.getElementById('gastoMonth').value);
+            const year = parseInt(document.getElementById('gastoYear').value);
+            const amount = parseFloat(document.getElementById('gastoAmount').value);
+            
+            if (!amount || amount <= 0) { showToast('❌ Introduce un importe válido', 'error'); return; }
+            
+            const perPerson = amount / tenantIds.length;
+            
+            const { error } = await supabase
+                .from('expenses')
+                .insert([{
+                    property_id: propertyId,
+                    type: type,
+                    month: month,
+                    year: year,
+                    amount: amount,
+                    per_person: perPerson,
+                    tenant_ids: tenantIds.join(',')
+                }]);
+                
+            if (error) {
+                showToast('❌ Error al repartir gastos', 'error');
+                return;
+            }
+            
+            await loadInitialData();
+            renderGastos();
+            showToast(`✅ Gasto repartido: €${perPerson.toFixed(2)} por persona`, 'success');
+            document.getElementById('gastoAmount').value = '';
+        }
+
+        function renderGastos() {
+            const container = document.getElementById('gastosList');
+            if (!container) return;
+
+            if (state.expenses.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-400">No hay gastos registrados</p>';
+                return;
+            }
+
+            const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
+
+            container.innerHTML = state.expenses.slice().reverse().map(g => `
+                <div class="gasto-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-gray-800">${g.property_name || 'Propiedad'}</p>
+                            <p class="text-sm text-gray-500">${typeLabels[g.type] || g.type} · ${g.month}/${g.year}</p>
+                            <p class="text-xs text-gray-400">Total: €${g.amount.toFixed(2)} · €${g.per_person.toFixed(2)}/persona</p>
+                        </div>
+                        <button onclick="verDetalleGasto('${g.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver</button>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2" id="categoryContainer">
-                    <span class="category-item active" data-category="all" onclick="filterByCategory(this, 'all')"><i class="fas fa-th-large"></i> Todas</span>
-                    <span class="category-item inactive" data-category="house" onclick="filterByCategory(this, 'house')"><i class="fas fa-house-chimney"></i> Casa</span>
-                    <span class="category-item inactive" data-category="villa" onclick="filterByCategory(this, 'villa')"><i class="fas fa-home"></i> Villa</span>
-                    <span class="category-item inactive" data-category="apartment" onclick="filterByCategory(this, 'apartment')"><i class="fas fa-building"></i> Apartamento</span>
-                    <span class="category-item inactive" data-category="bungalow" onclick="filterByCategory(this, 'bungalow')"><i class="fas fa-house"></i> Bungalow</span>
+            `).join('');
+        }
+
+        function verDetalleGasto(gastoId) {
+            const gasto = state.expenses.find(g => g.id === gastoId);
+            if (!gasto) return;
+            const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
+            document.getElementById('paymentContent').innerHTML = `
+                <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                    <p><strong>Vivienda:</strong> ${gasto.property_name || 'N/A'}</p>
+                    <p><strong>Tipo:</strong> ${typeLabels[gasto.type] || gasto.type}</p>
+                    <p><strong>Fecha:</strong> ${gasto.month}/${gasto.year}</p>
+                    <p><strong>Importe total:</strong> €${gasto.amount.toFixed(2)}</p>
+                    <p><strong>Por persona:</strong> €${gasto.per_person.toFixed(2)}</p>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">Mostrando <span id="propertyCount">0</span> viviendas</span>
-                </div>
-                <div id="propertyList" class="space-y-4"></div>
             `;
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        // ============================================
+        // INCIDENCIAS (Con Supabase)
+        // ============================================
+        function openAddIncidencia() {
+            actualizarSelectoresIncidencias();
+            document.getElementById('incidenciaModalTitle').textContent = 'Nueva Incidencia';
+            document.getElementById('incidenciaForm').reset();
+            document.getElementById('incidenciaModal').classList.add('active');
+        }
+
+        function closeIncidenciaModal() { document.getElementById('incidenciaModal').classList.remove('active'); }
+
+        async function saveIncidencia(e) {
+            e.preventDefault();
             
-            const cat = state.currentCategory || 'all';
-            document.querySelectorAll('.category-item').forEach(el => {
-                el.classList.remove('active');
-                el.classList.add('inactive');
-                if (el.dataset.category === cat) { el.classList.remove('inactive');
-                    el.classList.add('active'); }
+            const propertyId = document.getElementById('incidenciaProperty').value;
+            const tenantId = document.getElementById('incidenciaTenant').value;
+            
+            const newIncidencia = {
+                title: document.getElementById('incidenciaTitle').value.trim(),
+                property_id: propertyId || null,
+                tenant_id: tenantId || null,
+                description: document.getElementById('incidenciaDesc').value.trim(),
+                priority: document.getElementById('incidenciaPriority').value,
+                status: 'pendiente'
+            };
+            
+            const { data, error } = await supabase
+                .from('incidents')
+                .insert([newIncidencia])
+                .select();
+                
+            if (error) {
+                showToast('❌ Error al crear incidencia', 'error');
+                return;
+            }
+            
+            state.incidents.push(data[0]);
+            closeIncidenciaModal();
+            renderIncidencias();
+            showToast('✅ Incidencia creada correctamente', 'success');
+        }
+
+        function filterIncidencias(el, filter) {
+            document.querySelectorAll('.incidencia-filter').forEach(item => {
+                item.classList.remove('active');
             });
+            el.classList.add('active');
+            state.incidenciaFilter = filter;
+            renderIncidencias();
+        }
+
+        function renderIncidencias() {
+            const container = document.getElementById('incidenciasList');
+            if (!container) return;
+
+            const searchTerm = document.getElementById('incidenciaSearch')?.value?.toLowerCase() || '';
+            const filter = state.incidenciaFilter || 'todas';
+
+            let filtered = state.incidents;
+            if (filter !== 'todas') {
+                filtered = filtered.filter(i => i.status === filter);
+            }
+            if (searchTerm) {
+                filtered = filtered.filter(i => i.title.toLowerCase().includes(searchTerm) || i.description.toLowerCase().includes(
+                searchTerm));
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML =
+                    '<div class="text-center py-8 text-gray-400"><i class="fas fa-check-circle text-3xl mb-2 block"></i><p>No hay incidencias</p></div>';
+                return;
+            }
+
+            const priorityLabels = { 'baja': '🟢 Baja', 'media': '🟡 Media', 'alta': '🔴 Alta' };
+
+            container.innerHTML = filtered.map(i => `
+                <div class="incidencia-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">${i.title}</h4>
+                            <p class="text-sm text-gray-500">${i.description}</p>
+                            <div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
+                                <span>📅 ${new Date(i.created_at).toLocaleDateString()}</span>
+                                ${i.tenant_name ? `<span>👤 ${i.tenant_name}</span>` : ''}
+                                ${i.property_name ? `<span>🏠 ${i.property_name}</span>` : ''}
+                                ${i.status === 'pendiente' ? `<span class="text-red-500">⏳ Pendiente</span>` : `<span class="text-green-500">✅ Resuelta</span>`}
+                            </div>
+                        </div>
+                        <span class="status-incidencia ${i.status === 'pendiente' ? 'status-pendiente' : 'status-resuelta'}">${i.status === 'pendiente' ? 'Abierta' : 'Resuelta'}</span>
+                    </div>
+                    <div class="flex gap-2 mt-2 flex-wrap">
+                        <span class="text-xs font-medium">${priorityLabels[i.priority] || i.priority}</span>
+                        ${i.status === 'pendiente' ? `
+                            <button onclick="abrirResolver('${i.id}')" class="btn-sm btn-sm-success"><i class="fas fa-check mr-1"></i>Resolver</button>
+                        ` : ''}
+                        ${i.resolution ? `<button onclick="verResolucion('${i.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver resolución</button>` : ''}
+                        <button onclick="eliminarIncidencia('${i.id}')" class="btn-sm btn-sm-danger"><i class="fas fa-trash mr-1"></i>Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function abrirResolver(id) {
+            document.getElementById('resolverIncidenciaId').value = id;
+            document.getElementById('resolverForm').reset();
+            document.getElementById('resolverModal').classList.add('active');
+        }
+
+        function closeResolverModal() { document.getElementById('resolverModal').classList.remove('active'); }
+
+        async function saveResolver(e) {
+            e.preventDefault();
+            const id = document.getElementById('resolverIncidenciaId').value;
             
+            const { error } = await supabase
+                .from('incidents')
+                .update({
+                    status: 'resuelta',
+                    resolution: document.getElementById('resolverDesc').value.trim(),
+                    resolved_date: new Date().toISOString()
+                })
+                .eq('id', id);
+                
+            if (error) {
+                showToast('❌ Error al resolver incidencia', 'error');
+                return;
+            }
+            
+            state.incidents = state.incidents.map(i => 
+                i.id === id ? { ...i, status: 'resuelta', resolution: document.getElementById('resolverDesc').value.trim(), resolved_date: new Date().toISOString() } : i
+            );
+            
+            closeResolverModal();
+            renderIncidencias();
+            showToast('✅ Incidencia resuelta correctamente', 'success');
+        }
+
+        function verResolucion(id) {
+            const incidencia = state.incidents.find(i => i.id === id);
+            if (!incidencia) return;
+            document.getElementById('incidenciaModalTitle').textContent = 'Resolución de Incidencia';
+            document.getElementById('incidenciaContent').innerHTML = `
+                <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                    <p><strong>Incidencia:</strong> ${incidencia.title}</p>
+                    <p><strong>Fecha resolución:</strong> ${new Date(incidencia.resolved_date).toLocaleDateString()}</p>
+                    <p><strong>Solución:</strong> ${incidencia.resolution}</p>
+                </div>
+            `;
+            document.getElementById('incidenciaModal').classList.add('active');
+        }
+
+        async function eliminarIncidencia(id) {
+            if (!confirm('¿Eliminar esta incidencia?')) return;
+            
+            const { error } = await supabase
+                .from('incidents')
+                .delete()
+                .eq('id', id);
+                
+            if (error) {
+                showToast('❌ Error al eliminar incidencia', 'error');
+                return;
+            }
+            
+            state.incidents = state.incidents.filter(i => i.id !== id);
+            renderIncidencias();
+            showToast('🗑️ Incidencia eliminada', 'info');
+        }
+
+        // ============================================
+        // FILTROS (TODO IGUAL QUE ANTES)
+        // ============================================
+        function openFilterModal() {
+            document.getElementById('filterProvince').value = state.filters.province || 'all';
+            document.getElementById('filterCity').value = state.filters.city || 'all';
+            document.getElementById('filterMinPrice').value = state.filters.minPrice || 0;
+            document.getElementById('filterMaxPrice').value = state.filters.maxPrice || 1000000;
+            document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(el => {
+                el.classList.remove('selected');
+                if (el.dataset.beds === state.filters.beds) el.classList.add('selected');
+            });
+            document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(el => {
+                el.classList.remove('selected');
+                if (el.dataset.status === state.filters.status) el.classList.add('selected');
+            });
+            document.querySelectorAll('#filterModal .service-check').forEach(el => {
+                el.classList.remove('selected');
+                const val = el.querySelector('input').value;
+                if (state.filters.services.includes(val)) el.classList.add('selected');
+            });
+            const mid = (state.filters.minPrice + state.filters.maxPrice) / 2;
+            document.getElementById('priceRange').value = mid || 500000;
+            document.getElementById('rangeValue').textContent = '€' + (mid || 500000).toLocaleString();
+            document.getElementById('filterModal').classList.add('active');
+        }
+
+        function closeFilterModal() { document.getElementById('filterModal').classList.remove('active'); }
+
+        function updatePriceRange(value) {
+            const val = parseInt(value);
+            document.getElementById('rangeValue').textContent = '€' + val.toLocaleString();
+            const min = Math.max(0, val - 250000);
+            const max = val + 250000;
+            document.getElementById('filterMinPrice').value = min;
+            document.getElementById('filterMaxPrice').value = max;
+            state.filters.minPrice = min;
+            state.filters.maxPrice = max;
+            applyFilters();
+        }
+
+        function selectBeds(el, beds) {
+            document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            state.filters.beds = beds;
+            applyFilters();
+        }
+
+        function selectStatusFilter(el, status) {
+            document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            state.filters.status = status;
+            applyFilters();
+        }
+
+        function toggleService(el) {
+            el.classList.toggle('selected');
+            const checkbox = el.querySelector('input');
+            const value = checkbox.value;
+            const idx = state.filters.services.indexOf(value);
+            if (idx > -1) state.filters.services.splice(idx, 1);
+            else state.filters.services.push(value);
+            applyFilters();
+        }
+
+        function toggleServiceAdd(el) { el.classList.toggle('selected'); }
+
+        function applyFilters() {
+            state.filters.province = document.getElementById('filterProvince').value;
+            state.filters.city = document.getElementById('filterCity').value;
+            state.filters.minPrice = parseInt(document.getElementById('filterMinPrice').value) || 0;
+            state.filters.maxPrice = parseInt(document.getElementById('filterMaxPrice').value) || 1000000;
+            let count = 0;
+            if (state.filters.province !== 'all') count++;
+            if (state.filters.city !== 'all') count++;
+            if (state.filters.beds !== 'all') count++;
+            if (state.filters.status !== 'all') count++;
+            count += state.filters.services.length;
+            const badge = document.getElementById('filterBadge');
+            if (count > 0) { badge.textContent = count;
+                badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
             renderProperties();
         }
+
+        function applyFiltersAndClose() { applyFilters();
+            closeFilterModal();
+            showToast('✅ Filtros aplicados', 'success'); }
+
+        // ============================================
+        // RENDERIZAR PROPIEDADES (Con Supabase)
+        // ============================================
+        let currentCategory = 'all';
 
         function filterByCategory(el, category) {
             document.querySelectorAll('.category-item').forEach(item => {
@@ -918,7 +1292,7 @@
             });
             el.classList.remove('inactive');
             el.classList.add('active');
-            state.currentCategory = category;
+            currentCategory = category;
             renderProperties();
         }
 
@@ -933,7 +1307,7 @@
 
             const searchTerm = document.getElementById('searchInput')?.value?.toLowerCase() || '';
             const filters = state.filters;
-            const category = state.currentCategory;
+            const category = currentCategory;
 
             let filtered = state.properties;
 
@@ -1013,51 +1387,8 @@
         }
 
         // ============================================
-        // RENDER INQUILINOS
+        // RENDERIZAR INQUILINOS / CONTRATOS (Con Supabase)
         // ============================================
-        function renderInquilinos() {
-            const mainContent = document.getElementById('mainContent');
-            
-            if (state.role === 'tenant') {
-                mainContent.innerHTML = `
-                    <div class="bg-white rounded-2xl p-6 text-center">
-                        <i class="fas fa-user-shield text-6xl text-indigo-200 mb-4 block"></i>
-                        <h3 class="text-lg font-semibold text-gray-800">Acceso restringido</h3>
-                        <p class="text-gray-500 text-sm">Los inquilinos solo pueden ver sus propias propiedades y datos.</p>
-                        <button onclick="navigateTo('resumen')" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition">
-                            <i class="fas fa-arrow-left mr-2"></i>Volver al Resumen
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
-            mainContent.innerHTML = `
-                <div class="mb-3">
-                    <div class="flex gap-2 mb-3">
-                        <span class="subcategory-item active" data-sub="tenants" onclick="setTenantSubcategory('tenants')">Inquilinos</span>
-                        <span class="subcategory-item" data-sub="contracts" onclick="setTenantSubcategory('contracts')">Contratos</span>
-                    </div>
-                    <div id="contractFilters" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style="display:none;">
-                        <span class="filter-chip-contract active" data-filter="all" onclick="filterContracts('all')">Todos</span>
-                        <span class="filter-chip-contract" data-filter="active" onclick="filterContracts('active')">Activos</span>
-                        <span class="filter-chip-contract" data-filter="expiring" onclick="filterContracts('expiring')">A punto de caducar</span>
-                        <span class="filter-chip-contract" data-filter="expired" onclick="filterContracts('expired')">Vencidos</span>
-                        <span class="filter-chip-contract" data-filter="rejected" onclick="filterContracts('rejected')">Desestimados</span>
-                    </div>
-                    <div class="search-box mt-2">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="contractSearch" placeholder="Buscar por nombre o dirección..." oninput="renderContracts()" />
-                    </div>
-                </div>
-                <div id="contractContainer" class="space-y-3"></div>
-            `;
-            
-            const filters = document.getElementById('contractFilters');
-            if (filters) filters.style.display = state.tenantSubcategory === 'contracts' ? 'flex' : 'none';
-            renderContracts();
-        }
-
         function renderContracts() {
             const container = document.getElementById('contractContainer');
             if (!container) return;
@@ -1200,348 +1531,7 @@
         }
 
         // ============================================
-        // RENDER GASTOS
-        // ============================================
-        function renderGastosView() {
-            const mainContent = document.getElementById('mainContent');
-            
-            if (state.role === 'tenant') {
-                const myExpenses = state.expenses.filter(e => 
-                    e.tenant_ids && e.tenant_ids.includes(state.currentUser.id)
-                );
-                
-                mainContent.innerHTML = `
-                    <div class="bg-white rounded-2xl p-4 card-shadow">
-                        <h3 class="font-semibold text-gray-800 mb-3">💰 Mis Gastos Compartidos</h3>
-                        ${myExpenses.length === 0 ? '<p class="text-sm text-gray-400">No hay gastos compartidos</p>' :
-                            myExpenses.map(e => `
-                                <div class="gasto-card mb-2">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <p class="font-medium text-gray-800">${e.type}</p>
-                                            <p class="text-sm text-gray-500">${e.month}/${e.year}</p>
-                                            <p class="text-xs text-gray-400">Mi parte: €${e.per_person}</p>
-                                        </div>
-                                        <span class="text-sm font-semibold text-indigo-600">€${e.amount}</span>
-                                    </div>
-                                </div>
-                            `).join('')
-                        }
-                    </div>
-                `;
-                return;
-            }
-
-            const propertyOptions = state.properties.map(p =>
-                `<option value="${p.id}">${p.title} (${p.beds} hab.)</option>`
-            ).join('');
-
-            mainContent.innerHTML = `
-                <div class="bg-white rounded-2xl p-4 card-shadow">
-                    <h3 class="font-semibold text-gray-800 mb-3">💰 REPARTIR GASTOS AUTOMÁTICOS</h3>
-                    <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Vivienda</label>
-                        <select id="gastoProperty" class="login-input">
-                            <option value="">Seleccionar vivienda</option>
-                            ${propertyOptions}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de gasto</label>
-                        <select id="gastoType" class="login-input">
-                            <option value="luz">Luz</option>
-                            <option value="agua">Agua</option>
-                            <option value="internet">Internet</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Mes</label><select id="gastoMonth" class="login-input"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></div>
-                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Año</label><input type="number" id="gastoYear" class="login-input" placeholder="2024" value="${new Date().getFullYear()}" /></div>
-                    </div>
-                    <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Importe factura (€)</label><input type="number" id="gastoAmount" class="login-input" placeholder="150.00" step="0.01" /></div>
-                    <button onclick="repartirGastos()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">Repartir entre inquilinos</button>
-                </div>
-                <div class="bg-white rounded-2xl p-4 card-shadow">
-                    <h3 class="font-semibold text-gray-800 mb-3">📋 Histórico de gastos</h3>
-                    <div id="gastosList" class="space-y-2"></div>
-                </div>
-            `;
-            renderGastos();
-        }
-
-        function renderGastos() {
-            const container = document.getElementById('gastosList');
-            if (!container) return;
-
-            if (state.expenses.length === 0) {
-                container.innerHTML = '<p class="text-sm text-gray-400">No hay gastos registrados</p>';
-                return;
-            }
-
-            const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
-
-            container.innerHTML = state.expenses.slice().reverse().map(g => `
-                <div class="gasto-card">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="font-medium text-gray-800">${g.property_name || 'Propiedad'}</p>
-                            <p class="text-sm text-gray-500">${typeLabels[g.type] || g.type} · ${g.month}/${g.year}</p>
-                            <p class="text-xs text-gray-400">Total: €${g.amount.toFixed(2)} · €${g.per_person.toFixed(2)}/persona</p>
-                        </div>
-                        <button onclick="verDetalleGasto('${g.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function verDetalleGasto(gastoId) {
-            const gasto = state.expenses.find(g => g.id === gastoId);
-            if (!gasto) return;
-            const typeLabels = { 'luz': '💡 Luz', 'agua': '💧 Agua', 'internet': '🌐 Internet' };
-            document.getElementById('paymentContent').innerHTML = `
-                <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-                    <p><strong>Vivienda:</strong> ${gasto.property_name || 'N/A'}</p>
-                    <p><strong>Tipo:</strong> ${typeLabels[gasto.type] || gasto.type}</p>
-                    <p><strong>Fecha:</strong> ${gasto.month}/${gasto.year}</p>
-                    <p><strong>Importe total:</strong> €${gasto.amount.toFixed(2)}</p>
-                    <p><strong>Por persona:</strong> €${gasto.per_person.toFixed(2)}</p>
-                </div>
-            `;
-            document.getElementById('paymentModal').classList.add('active');
-        }
-
-        function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
-
-        function viewPayment(paymentId) {
-            const payment = state.payments.find(p => p.id === paymentId);
-            if (!payment) return;
-            document.getElementById('paymentContent').innerHTML = `
-                <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-                    <p><strong>Inquilino:</strong> ${payment.tenant_name || 'N/A'}</p>
-                    <p><strong>Vivienda:</strong> ${payment.property_name || 'N/A'}</p>
-                    <p><strong>Importe:</strong> €${payment.amount}</p>
-                    <p><strong>Fecha:</strong> ${payment.month}/${payment.year}</p>
-                    <p><strong>Estado:</strong> ${payment.status === 'paid' ? '✅ Pagado' : '⚠️ Pendiente'}</p>
-                </div>
-            `;
-            document.getElementById('paymentModal').classList.add('active');
-        }
-
-        // ============================================
-        // RENDER INCIDENCIAS
-        // ============================================
-        function renderIncidenciasView() {
-            const mainContent = document.getElementById('mainContent');
-            
-            mainContent.innerHTML = `
-                <div class="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
-                    <span class="incidencia-filter active" data-filter="todas" onclick="filterIncidencias(this, 'todas')">Todas</span>
-                    <span class="incidencia-filter" data-filter="pendiente" onclick="filterIncidencias(this, 'pendiente')">Abiertas</span>
-                    <span class="incidencia-filter" data-filter="resuelta" onclick="filterIncidencias(this, 'resuelta')">Resueltas</span>
-                </div>
-                <div class="flex items-center gap-2 mb-3">
-                    <div class="search-box flex-1">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="incidenciaSearch" placeholder="Buscar incidencia..." oninput="renderIncidencias()" />
-                    </div>
-                    <button onclick="openAddIncidencia()" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition whitespace-nowrap">
-                        <i class="fas fa-plus mr-1"></i>Nueva
-                    </button>
-                </div>
-                <div id="incidenciasList" class="space-y-3"></div>
-            `;
-            
-            actualizarSelectoresIncidencias();
-            renderIncidencias();
-        }
-
-        function actualizarSelectoresIncidencias() {
-            const propertySelect = document.getElementById('incidenciaProperty');
-            const tenantSelect = document.getElementById('incidenciaTenant');
-            
-            if (propertySelect) {
-                propertySelect.innerHTML = `<option value="">Seleccionar</option>` +
-                    state.properties.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
-            }
-            
-            if (tenantSelect && state.role === 'owner') {
-                tenantSelect.innerHTML = `<option value="">Seleccionar</option>` +
-                    state.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-            } else if (tenantSelect && state.role === 'tenant') {
-                tenantSelect.innerHTML = `<option value="${state.currentUser.id}">${state.currentUser.name}</option>`;
-                tenantSelect.disabled = true;
-            }
-        }
-
-        function filterIncidencias(el, filter) {
-            document.querySelectorAll('.incidencia-filter').forEach(item => {
-                item.classList.remove('active');
-            });
-            el.classList.add('active');
-            state.incidenciaFilter = filter;
-            renderIncidencias();
-        }
-
-        function renderIncidencias() {
-            const container = document.getElementById('incidenciasList');
-            if (!container) return;
-
-            const searchTerm = document.getElementById('incidenciaSearch')?.value?.toLowerCase() || '';
-            const filter = state.incidenciaFilter || 'todas';
-
-            let filtered = state.incidents;
-            if (filter !== 'todas') {
-                filtered = filtered.filter(i => i.status === filter);
-            }
-            if (searchTerm) {
-                filtered = filtered.filter(i => i.title.toLowerCase().includes(searchTerm) || i.description.toLowerCase().includes(
-                searchTerm));
-            }
-
-            if (filtered.length === 0) {
-                container.innerHTML =
-                    '<div class="text-center py-8 text-gray-400"><i class="fas fa-check-circle text-3xl mb-2 block"></i><p>No hay incidencias</p></div>';
-                return;
-            }
-
-            const priorityLabels = { 'baja': '🟢 Baja', 'media': '🟡 Media', 'alta': '🔴 Alta' };
-
-            container.innerHTML = filtered.map(i => `
-                <div class="incidencia-card">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold text-gray-800">${i.title}</h4>
-                            <p class="text-sm text-gray-500">${i.description}</p>
-                            <div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
-                                <span>📅 ${new Date(i.created_at).toLocaleDateString()}</span>
-                                ${i.tenant_name ? `<span>👤 ${i.tenant_name}</span>` : ''}
-                                ${i.property_name ? `<span>🏠 ${i.property_name}</span>` : ''}
-                                ${i.status === 'pendiente' ? `<span class="text-red-500">⏳ Pendiente</span>` : `<span class="text-green-500">✅ Resuelta</span>`}
-                            </div>
-                        </div>
-                        <span class="status-incidencia ${i.status === 'pendiente' ? 'status-pendiente' : 'status-resuelta'}">${i.status === 'pendiente' ? 'Abierta' : 'Resuelta'}</span>
-                    </div>
-                    <div class="flex gap-2 mt-2 flex-wrap">
-                        <span class="text-xs font-medium">${priorityLabels[i.priority] || i.priority}</span>
-                        ${i.status === 'pendiente' ? `
-                            <button onclick="abrirResolver('${i.id}')" class="btn-sm btn-sm-success"><i class="fas fa-check mr-1"></i>Resolver</button>
-                        ` : ''}
-                        ${i.resolution ? `<button onclick="verResolucion('${i.id}')" class="btn-sm btn-sm-primary"><i class="fas fa-eye mr-1"></i>Ver resolución</button>` : ''}
-                        <button onclick="eliminarIncidencia('${i.id}')" class="btn-sm btn-sm-danger"><i class="fas fa-trash mr-1"></i>Eliminar</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openAddIncidencia() {
-            actualizarSelectoresIncidencias();
-            document.getElementById('incidenciaModalTitle').textContent = 'Nueva Incidencia';
-            document.getElementById('incidenciaForm').reset();
-            document.getElementById('incidenciaModal').classList.add('active');
-        }
-
-        function closeIncidenciaModal() { document.getElementById('incidenciaModal').classList.remove('active'); }
-
-        async function saveIncidencia(e) {
-            e.preventDefault();
-            
-            const propertyId = document.getElementById('incidenciaProperty').value;
-            const tenantId = document.getElementById('incidenciaTenant').value;
-            
-            const newIncidencia = {
-                title: document.getElementById('incidenciaTitle').value.trim(),
-                property_id: propertyId || null,
-                tenant_id: tenantId || null,
-                description: document.getElementById('incidenciaDesc').value.trim(),
-                priority: document.getElementById('incidenciaPriority').value,
-                status: 'pendiente'
-            };
-            
-            const { data, error } = await supabase
-                .from('incidents')
-                .insert([newIncidencia])
-                .select();
-                
-            if (error) {
-                showToast('❌ Error al crear incidencia', 'error');
-                return;
-            }
-            
-            state.incidents.push(data[0]);
-            closeIncidenciaModal();
-            renderIncidencias();
-            showToast('✅ Incidencia creada correctamente', 'success');
-        }
-
-        function abrirResolver(id) {
-            document.getElementById('resolverIncidenciaId').value = id;
-            document.getElementById('resolverForm').reset();
-            document.getElementById('resolverModal').classList.add('active');
-        }
-
-        function closeResolverModal() { document.getElementById('resolverModal').classList.remove('active'); }
-
-        async function saveResolver(e) {
-            e.preventDefault();
-            const id = document.getElementById('resolverIncidenciaId').value;
-            
-            const { error } = await supabase
-                .from('incidents')
-                .update({
-                    status: 'resuelta',
-                    resolution: document.getElementById('resolverDesc').value.trim(),
-                    resolved_date: new Date().toISOString()
-                })
-                .eq('id', id);
-                
-            if (error) {
-                showToast('❌ Error al resolver incidencia', 'error');
-                return;
-            }
-            
-            state.incidents = state.incidents.map(i => 
-                i.id === id ? { ...i, status: 'resuelta', resolution: document.getElementById('resolverDesc').value.trim(), resolved_date: new Date().toISOString() } : i
-            );
-            
-            closeResolverModal();
-            renderIncidencias();
-            showToast('✅ Incidencia resuelta correctamente', 'success');
-        }
-
-        function verResolucion(id) {
-            const incidencia = state.incidents.find(i => i.id === id);
-            if (!incidencia) return;
-            document.getElementById('incidenciaModalTitle').textContent = 'Resolución de Incidencia';
-            document.getElementById('incidenciaContent').innerHTML = `
-                <div class="bg-gray-50 rounded-xl p-4 space-y-2">
-                    <p><strong>Incidencia:</strong> ${incidencia.title}</p>
-                    <p><strong>Fecha resolución:</strong> ${new Date(incidencia.resolved_date).toLocaleDateString()}</p>
-                    <p><strong>Solución:</strong> ${incidencia.resolution}</p>
-                </div>
-            `;
-            document.getElementById('incidenciaModal').classList.add('active');
-        }
-
-        async function eliminarIncidencia(id) {
-            if (!confirm('¿Eliminar esta incidencia?')) return;
-            
-            const { error } = await supabase
-                .from('incidents')
-                .delete()
-                .eq('id', id);
-                
-            if (error) {
-                showToast('❌ Error al eliminar incidencia', 'error');
-                return;
-            }
-            
-            state.incidents = state.incidents.filter(i => i.id !== id);
-            renderIncidencias();
-            showToast('🗑️ Incidencia eliminada', 'info');
-        }
-
-        // ============================================
-        // FUNCIONES DE PROPIEDADES (CRUD)
+        // FUNCIONES DE PROPIEDADES (CRUD con Supabase)
         // ============================================
         function openAddPropertyModal() {
             document.getElementById('addPropertyModal').classList.add('active');
@@ -1641,7 +1631,7 @@
         }
 
         // ============================================
-        // FUNCIONES DE GESTIÓN DE PROPIEDADES
+        // FUNCIONES DE GESTIÓN DE PROPIEDADES (Con Supabase)
         // ============================================
         async function openManageModal(propertyId) {
             const property = state.properties.find(p => p.id === propertyId);
@@ -1763,7 +1753,7 @@
         }
 
         // ============================================
-        // FUNCIONES DE HABITACIONES
+        // FUNCIONES DE HABITACIONES (Con Supabase)
         // ============================================
         function openEditRoomModal(propertyId, roomId) {
             showToast('🛠️ Editar habitación - Implementar', 'info');
@@ -1789,7 +1779,7 @@
         }
 
         // ============================================
-        // FUNCIONES DE ASIGNACIÓN DE INQUILINOS
+        // FUNCIONES DE ASIGNACIÓN DE INQUILINOS (Con Supabase)
         // ============================================
         function openAssignModal(propertyId, roomId) {
             const property = state.properties.find(p => p.id === propertyId);
@@ -1919,7 +1909,7 @@
         }
 
         // ============================================
-        // FUNCIONES DE INQUILINOS (CRUD)
+        // FUNCIONES DE INQUILINOS (CRUD con Supabase)
         // ============================================
         function openEditTenantModal(tenantId) {
             const tenant = state.tenants.find(t => t.id === tenantId);
@@ -1963,148 +1953,7 @@
         }
 
         // ============================================
-        // FUNCIONES DE GASTOS
-        // ============================================
-        async function repartirGastos() {
-            const propertyId = document.getElementById('gastoProperty').value;
-            if (!propertyId) { showToast('❌ Selecciona una vivienda', 'error'); return; }
-            
-            // Obtener inquilinos de la propiedad
-            const { data: rooms } = await supabase
-                .from('rooms')
-                .select('tenant_id')
-                .eq('property_id', propertyId)
-                .not('tenant_id', 'is', null);
-                
-            const tenantIds = rooms.map(r => r.tenant_id);
-            if (tenantIds.length === 0) { showToast('❌ No hay inquilinos en esta vivienda', 'error'); return; }
-            
-            const type = document.getElementById('gastoType').value;
-            const month = parseInt(document.getElementById('gastoMonth').value);
-            const year = parseInt(document.getElementById('gastoYear').value);
-            const amount = parseFloat(document.getElementById('gastoAmount').value);
-            
-            if (!amount || amount <= 0) { showToast('❌ Introduce un importe válido', 'error'); return; }
-            
-            const perPerson = amount / tenantIds.length;
-            
-            const { error } = await supabase
-                .from('expenses')
-                .insert([{
-                    property_id: propertyId,
-                    type: type,
-                    month: month,
-                    year: year,
-                    amount: amount,
-                    per_person: perPerson,
-                    tenant_ids: tenantIds.join(',')
-                }]);
-                
-            if (error) {
-                showToast('❌ Error al repartir gastos', 'error');
-                return;
-            }
-            
-            await loadInitialData();
-            renderGastos();
-            showToast(`✅ Gasto repartido: €${perPerson.toFixed(2)} por persona`, 'success');
-            document.getElementById('gastoAmount').value = '';
-        }
-
-        // ============================================
-        // FUNCIONES DE FILTROS
-        // ============================================
-        function openFilterModal() {
-            document.getElementById('filterProvince').value = state.filters.province || 'all';
-            document.getElementById('filterCity').value = state.filters.city || 'all';
-            document.getElementById('filterMinPrice').value = state.filters.minPrice || 0;
-            document.getElementById('filterMaxPrice').value = state.filters.maxPrice || 1000000;
-            
-            document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(el => {
-                el.classList.remove('selected');
-                if (el.dataset.beds === state.filters.beds) el.classList.add('selected');
-            });
-            
-            document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(el => {
-                el.classList.remove('selected');
-                if (el.dataset.status === state.filters.status) el.classList.add('selected');
-            });
-            
-            document.querySelectorAll('#filterModal .service-check').forEach(el => {
-                el.classList.remove('selected');
-                const val = el.querySelector('input').value;
-                if (state.filters.services.includes(val)) el.classList.add('selected');
-            });
-            
-            document.getElementById('filterModal').classList.add('active');
-        }
-
-        function closeFilterModal() { document.getElementById('filterModal').classList.remove('active'); }
-
-        function updatePriceRange(value) {
-            const val = parseInt(value);
-            document.getElementById('rangeValue').textContent = '€' + val.toLocaleString();
-            const min = Math.max(0, val - 250000);
-            const max = val + 250000;
-            document.getElementById('filterMinPrice').value = min;
-            document.getElementById('filterMaxPrice').value = max;
-            state.filters.minPrice = min;
-            state.filters.maxPrice = max;
-            applyFilters();
-        }
-
-        function selectBeds(el, beds) {
-            document.querySelectorAll('#filterModal .bed-option[data-beds]').forEach(b => b.classList.remove('selected'));
-            el.classList.add('selected');
-            state.filters.beds = beds;
-            applyFilters();
-        }
-
-        function selectStatusFilter(el, status) {
-            document.querySelectorAll('#filterModal .bed-option[data-status]').forEach(b => b.classList.remove('selected'));
-            el.classList.add('selected');
-            state.filters.status = status;
-            applyFilters();
-        }
-
-        function toggleService(el) {
-            el.classList.toggle('selected');
-            const checkbox = el.querySelector('input');
-            const value = checkbox.value;
-            const idx = state.filters.services.indexOf(value);
-            if (idx > -1) state.filters.services.splice(idx, 1);
-            else state.filters.services.push(value);
-            applyFilters();
-        }
-
-        function toggleServiceAdd(el) { el.classList.toggle('selected'); }
-
-        function applyFilters() {
-            state.filters.province = document.getElementById('filterProvince').value;
-            state.filters.city = document.getElementById('filterCity').value;
-            state.filters.minPrice = parseInt(document.getElementById('filterMinPrice').value) || 0;
-            state.filters.maxPrice = parseInt(document.getElementById('filterMaxPrice').value) || 1000000;
-            
-            let count = 0;
-            if (state.filters.province !== 'all') count++;
-            if (state.filters.city !== 'all') count++;
-            if (state.filters.beds !== 'all') count++;
-            if (state.filters.status !== 'all') count++;
-            count += state.filters.services.length;
-            
-            const badge = document.getElementById('filterBadge');
-            if (count > 0) { badge.textContent = count;
-                badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
-            
-            renderProperties();
-        }
-
-        function applyFiltersAndClose() { applyFilters();
-            closeFilterModal();
-            showToast('✅ Filtros aplicados', 'success'); }
-
-        // ============================================
-        // FUNCIONES DE PERFIL
+        // FUNCIONES DE PERFIL (Con Supabase)
         // ============================================
         function openProfileModal() {
             const modal = document.getElementById('profileModal');
@@ -2181,7 +2030,7 @@
         }
 
         // ============================================
-        // TOAST (NOTIFICACIONES)
+        // TOAST
         // ============================================
         let toastTimeout;
 
