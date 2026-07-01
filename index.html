@@ -431,33 +431,17 @@
 
     </div>
 
-    <script>
+   <script>
 // ============================================
-// CONFIGURACIÓN SUPABASE - VERSIÓN DEFINITIVA
+// CONFIGURACIÓN SUPABASE - SOLO UNA DECLARACIÓN
 // ============================================
 const SUPABASE_URL = 'https://wadujlpbpatkzdpnuqxl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_bSozVxnQyrkA4kAmlU6WZA_SJC1pY-b';
 
-// Crear cliente de Supabase de forma segura
-let supabase = null;
+// ✅ SOLO UNA VEZ - declaramos supabase aquí
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Función para inicializar Supabase
-function initSupabase() {
-    try {
-        // Verificar si window.supabase existe
-        if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('✅ Supabase client inicializado correctamente');
-            return true;
-        } else {
-            console.error('❌ window.supabase no está disponible');
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Error al inicializar Supabase:', error);
-        return false;
-    }
-}
+console.log('✅ Supabase client creado');
 
 // ============================================
 // ESTADO GLOBAL
@@ -516,12 +500,6 @@ function setLoginRole(role) {
 async function handleLogin(e) {
     e.preventDefault();
     
-    // Verificar que supabase esté inicializado
-    if (!supabase) {
-        showToast('❌ Error de conexión con el servidor', 'error');
-        return;
-    }
-    
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
 
@@ -569,9 +547,7 @@ async function handleLogin(e) {
 
 async function logout() {
     if (!confirm('¿Estás seguro de cerrar sesión?')) return;
-    if (supabase) {
-        await supabase.auth.signOut();
-    }
+    await supabase.auth.signOut();
     state.currentUser = null;
     state.role = null;
     document.getElementById('mainApp').classList.add('hidden');
@@ -608,13 +584,6 @@ function updateProfileIcon() {
 // ============================================
 async function loadInitialData() {
     try {
-        // Verificar que supabase existe
-        if (!supabase) {
-            console.error('❌ Supabase no inicializado');
-            showToast('❌ Error de conexión con el servidor', 'error');
-            return;
-        }
-        
         console.log('✅ Cargando datos desde Supabase...');
 
         let query = supabase.from('properties').select('*');
@@ -949,11 +918,6 @@ function updateResumenDashboard() {
 // GASTOS
 // ============================================
 async function repartirGastos() {
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const propertyId = document.getElementById('gastoProperty').value;
     if (!propertyId) { showToast('❌ Selecciona una vivienda', 'error'); return; }
     
@@ -1071,11 +1035,6 @@ function closeIncidenciaModal() { document.getElementById('incidenciaModal').cla
 async function saveIncidencia(e) {
     e.preventDefault();
     
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const propertyId = document.getElementById('incidenciaProperty').value;
     const tenantId = document.getElementById('incidenciaTenant').value;
     
@@ -1191,12 +1150,6 @@ function closeResolverModal() { document.getElementById('resolverModal').classLi
 
 async function saveResolver(e) {
     e.preventDefault();
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const id = document.getElementById('resolverIncidenciaId').value;
     
     const { error } = await supabase
@@ -1238,11 +1191,6 @@ function verResolucion(id) {
 
 async function eliminarIncidencia(id) {
     if (!confirm('¿Eliminar esta incidencia?')) return;
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
     
     const { error } = await supabase
         .from('incidents')
@@ -1579,11 +1527,6 @@ function closeContractModal() { document.getElementById('contractModal').classLi
 async function rejectContract(contractId) {
     if (!confirm('¿Desestimar este contrato?')) return;
     
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const { error } = await supabase
         .from('contracts')
         .update({ status: 'rejected' })
@@ -1630,11 +1573,6 @@ function previewNewImage(event) {
 
 async function saveNewProperty(e) {
     e.preventDefault();
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
     
     const beds = parseInt(document.getElementById('newBeds').value) || 1;
     const baths = parseInt(document.getElementById('newBaths').value) || 1;
@@ -1709,11 +1647,6 @@ async function saveNewProperty(e) {
 // FUNCIONES DE GESTIÓN DE PROPIEDADES
 // ============================================
 async function openManageModal(propertyId) {
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const property = state.properties.find(p => p.id === propertyId);
     if (!property) return;
     
@@ -1813,12 +1746,6 @@ function closeManageModal() { document.getElementById('manageModal').classList.r
 
 async function deleteProperty() {
     if (!confirm('¿Estás seguro de eliminar esta propiedad?')) return;
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const propertyId = state.currentManagePropertyId;
     
     const { error } = await supabase
@@ -1847,11 +1774,6 @@ function openEditRoomModal(propertyId, roomId) {
 function closeEditRoomModal() { document.getElementById('editRoomModal').classList.remove('active'); }
 
 async function changeRoomStatus(propertyId, roomId, newStatus) {
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const { error } = await supabase
         .from('rooms')
         .update({ status: newStatus })
@@ -1909,11 +1831,6 @@ function previewAssignImage(event) {
 
 async function saveAssignTenant(e) {
     e.preventDefault();
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
     
     const propertyId = document.getElementById('assignPropertyId').value;
     const roomId = document.getElementById('assignRoomIndex').value;
@@ -2018,12 +1935,6 @@ function closeEditTenantModal() { document.getElementById('editTenantModal').cla
 
 async function saveEditTenant(e) {
     e.preventDefault();
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const tenantId = document.getElementById('editTenantId').value;
     const name = document.getElementById('editTenantName').value.trim();
     const dni = document.getElementById('editTenantDni').value.trim();
@@ -2090,12 +2001,6 @@ function previewProfileImage(event) {
 
 async function saveProfile(e) {
     e.preventDefault();
-    
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const name = document.getElementById('profileName').value.trim();
     const phone = document.getElementById('profilePhone').value.trim();
     const email = document.getElementById('profileEmail').value.trim();
@@ -2116,11 +2021,6 @@ async function saveProfile(e) {
 }
 
 async function updateProfile(updates) {
-    if (!supabase) {
-        showToast('❌ Error de conexión', 'error');
-        return;
-    }
-    
     const { error } = await supabase
         .from('users')
         .update(updates)
@@ -2161,28 +2061,19 @@ function showToast(message, type = 'info') {
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Inicializando aplicación...');
-    
-    // Inicializar Supabase
-    if (!initSupabase()) {
-        showToast('❌ Error al conectar con el servidor', 'error');
-        return;
-    }
-    
     setLoginRole('owner');
     
     // Verificar sesión existente
-    if (supabase) {
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-                console.log('✅ Sesión existente encontrada');
-                loadInitialData();
-            } else {
-                console.log('📝 No hay sesión activa');
-            }
-        }).catch(error => {
-            console.error('Error al obtener sesión:', error);
-        });
-    }
+    supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+            console.log('✅ Sesión existente encontrada');
+            loadInitialData();
+        } else {
+            console.log('📝 No hay sesión activa');
+        }
+    }).catch(error => {
+        console.error('Error al obtener sesión:', error);
+    });
 });
 
 // Cerrar modales con Escape
@@ -2201,7 +2092,7 @@ document.addEventListener('keydown', (e) => {
         closeResolverModal();
     }
 });
-    </script>
+</script>
 
 </body>
 </html>
